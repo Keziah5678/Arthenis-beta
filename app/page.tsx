@@ -150,132 +150,132 @@ export default function Home() {
   }
 
   return (
-    <main className="game" onContextMenu={(event) => event.preventDefault()}>
-      <header className="top">
-        <button className="logo" onClick={() => setScreen("home")}>✦ ARTHENIS</button>
-        <div className="worldTitle"><b>{title}</b><span>{theme} · Jour {day}</span></div>
-        <button className="continueButton" onClick={advance}>▶ Continuer</button>
+    <main className="game arthenisFinal" onContextMenu={(event) => event.preventDefault()}>
+      <header className="finalTopbar">
+        <button className="finalBrand" onClick={() => setScreen("home")}><span>✧</span><div><strong>ARTHENIS</strong><small>WHERE WORLDS ARE BORN</small></div></button>
+        <nav className="finalNav">
+          {[
+            ["Carte","◈"],["Ajouter","♙"],["Civilisations","♜"],["Événements","▣"],["Chronologie","⌛"],["Paramètres","✦"]
+          ].map(([entry,icon]) => <button key={entry} className={tab===entry || (entry==="Civilisations" && kind==="Civilisation") ? "selected" : ""} onClick={() => {
+            if(entry==="Civilisations"){setKind("Civilisation");setTab("Ajouter");}
+            else if(entry==="Événements"){setKind("Influence");setTab("Ajouter");}
+            else if(entry==="Paramètres"){setNotice("Les règles fondamentales de "+title+" restent actives.");}
+            else setTab(entry);
+          }}><i>{icon}</i><span>{entry}</span></button>)}
+        </nav>
+        <button className="saveButton" onClick={() => setNotice("✓ Monde sauvegardé localement.")}>▣ Sauvegarder</button>
+        <button className="creatorAvatar" onClick={() => setNotice("Créateur du monde : Keziah.")}>K</button>
       </header>
 
-      <div className="gameStatus">
-        <span>◉ CRÉATION DIRECTE</span>
-        <span>JOUR {day}</span>
-        <span>{items.length} ÉLÉMENT{items.length > 1 ? "S" : ""} ACTIF{items.length > 1 ? "S" : ""}</span>
-        <span className="statusHint">Aucun élément automatique</span>
-      </div>
+      {notice && <div className="toast finalToast">{notice}<button onClick={() => setNotice("")}>×</button></div>}
 
-      {notice && <div className="toast">{notice}<button onClick={() => setNotice("")}>×</button></div>}
+      <section className="finalLayout">
+        <aside className="finalLeft">
+          <div className="glassPanel addPanel">
+            <div className="panelHeader"><h3>Ajouter un élément</h3><button onClick={() => setNotice("Choisis un type d'élément.")}>×</button></div>
+            {([
+              ["Région","◭","Montagnes, forêts, déserts..."],
+              ["Civilisation","♜","Royaumes, empires, tribus..."],
+              ["Village","⌂","Petites communautés"],
+              ["Personnage","♙","Héros, PNJ, créatures..."],
+              ["Influence","✦","Ruines, dons, merveilles..."]
+            ] as [Item["kind"],string,string][]).map(([entry,icon,sub]) =>
+              <button className={"addChoice "+(kind===entry && tab==="Ajouter" ? "chosen" : "")} key={entry} onClick={() => {setKind(entry);setTab("Ajouter");}}>
+                <b>{icon}</b><span><strong>{entry}</strong><small>{sub}</small></span>
+              </button>
+            )}
+          </div>
 
-      <div className="hud">
-        <aside className="side">
-          {["Carte", "Ajouter", "Chronologie"].map((entry) => <button key={entry} className={tab === entry ? "active" : ""} onClick={() => setTab(entry)}>{entry === "Carte" ? "◈" : entry === "Ajouter" ? "＋" : "⌛"}<span>{entry}</span></button>)}
-          <div className="sideStats">
-            <small>MONDE</small>
-            <span>⌁ {countByKind("Région")}</span>
-            <span>♜ {countByKind("Civilisation")}</span>
-            <span>⌂ {countByKind("Village")}</span>
-            <span>♙ {countByKind("Personnage")}</span>
+          <div className="glassPanel mapTools">
+            <div className="panelHeader"><h3>Outils de carte</h3><button onClick={() => {setZoom(1);setPan({x:0,y:0});}}>×</button></div>
+            <div className="toolRow">
+              <button className="selected">↖</button><button>✋</button>
+              <button onClick={() => setZoom(v=>Math.min(2.5,v+.2))}>⌕</button>
+              <button onClick={() => setZoom(v=>Math.max(.65,v-.2))}>⊕</button><button>▱</button>
+            </div>
+            <label className="zoomLine">Zoom <button onClick={() => setZoom(v=>Math.max(.65,v-.2))}>−</button><input type="range" min=".65" max="2.5" step=".05" value={zoom} onChange={e=>setZoom(Number(e.target.value))}/><button onClick={() => setZoom(v=>Math.min(2.5,v+.2))}>＋</button></label>
+            <button className="modeButton">Mode : <span>Exploration</span>⌄</button>
           </div>
         </aside>
 
-        <section className="board">
-          {tab === "Carte" && (
-            <>
-              <div className="boardTop"><div><p className="panelTag">CARTE DU MONDE · VUE LIBRE</p><h2>{title}</h2></div><button onClick={() => document.querySelector(".mapShell")?.requestFullscreen?.()}>⛶ Grand écran</button></div>
-              <div className="mapShell">
-                <div
-                  className="gameMap"
-                  onPointerDown={(event) => setDrag({ x: event.clientX, y: event.clientY })}
-                  onPointerMove={(event) => {
-                    if (!drag) return;
-                    setPan((value) => ({ x: value.x + event.clientX - drag.x, y: value.y + event.clientY - drag.y }));
-                    setDrag({ x: event.clientX, y: event.clientY });
-                  }}
-                  onPointerUp={() => setDrag(null)}
-                  onPointerLeave={() => setDrag(null)}
-                >
-                  <div className="mapViewport" style={{ transform: "translate(" + pan.x + "px," + pan.y + "px) scale(" + zoom + ")" }}>
-                    <div className="mapGrid" />
-                    {items.map((item) => {
-                      const visual = visualFor(item);
-                      return (
-                        <button
-                          key={item.id}
-                          className={"marker marker" + item.kind}
-                          style={{ left: item.x + "%", top: item.y + "%" }}
-                          onClick={() => { setSelected(item); setNotice(iconFor(item.kind) + " " + item.name + " sélectionné."); }}
-                        >
-                          <div className={"worldTile tile-" + visual}>
-                            <div className="tileSky" />
-                            <div className="tileScene">
-                              {visual === "ice" && <><i className="icePeak p1" /><i className="icePeak p2" /><i className="snowDrift" /></>}
-                              {visual === "forest" && <><i className="tree t1" /><i className="tree t2" /><i className="tree t3" /><i className="tree t4" /></>}
-                              {visual === "desert" && <><i className="dune d1" /><i className="dune d2" /><i className="sun" /></>}
-                              {visual === "volcano" && <><i className="volcano" /><i className="lava" /><i className="smoke" /></>}
-                              {visual === "mountain" && <><i className="mountain m1" /><i className="mountain m2" /><i className="cloud" /></>}
-                              {visual === "ocean" && <><i className="island" /><i className="wave w1" /><i className="wave w2" /></>}
-                              {visual === "city" && <><i className="building b1" /><i className="building b2" /><i className="building b3" /><i className="building b4" /></>}
-                              {visual === "village" && <><i className="house h1" /><i className="house h2" /><i className="house h3" /></>}
-                              {visual === "character" && <><i className="heroHead" /><i className="heroBody" /><i className="heroGlow" /></>}
-                              {visual === "magic" && <><i className="crystal c1" /><i className="crystal c2" /><i className="crystal c3" /></>}
-                            </div>
-                            <div className="tileVignette" />
-                          </div>
-                          <span className="markerLabel">{item.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {!items.length && <div className="emptyMap"><b>CARTE VIERGE</b><small>Ton monde n'existe encore que par tes choix. Ajoute un premier élément : il sera placé ici immédiatement.</small></div>}
-
-                  <div className="mapLegend"><span>⌁ Région</span><span>♜ Civilisation</span><span>⌂ Village</span><span>♙ Personnage</span><span>✦ Influence</span></div>
-
-                  {selected && <div className="entityInspector"><button className="closeInspect" onClick={() => setSelected(null)}>×</button><div className="inspectIcon">{iconFor(selected.kind)}</div><small>ÉLÉMENT DU MONDE</small><b>{selected.name}</b><p>{selected.description}</p><button onClick={() => setTab("Chronologie")}>Voir dans l'histoire →</button></div>}
-
-                  <div className="zoomControls"><button onClick={() => setZoom((value) => Math.min(2.5, value + 0.2))}>＋</button><button onClick={() => setZoom((value) => Math.max(0.65, value - 0.2))}>−</button><button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>⌖</button></div>
+        <section className="finalCenter">
+          <div className="worldMapFrame">
+            <div className="worldMap" onPointerDown={event=>setDrag({x:event.clientX,y:event.clientY})} onPointerMove={event=>{
+              if(!drag)return;
+              setPan(v=>({x:v.x+event.clientX-drag.x,y:v.y+event.clientY-drag.y}));
+              setDrag({x:event.clientX,y:event.clientY});
+            }} onPointerUp={()=>setDrag(null)} onPointerLeave={()=>setDrag(null)}>
+              <div className="mapViewport cinematicViewport" style={{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")"}}>
+                <div className="fantasyTerrain">
+                  <div className="terrainIce"/><div className="terrainForest"/><div className="terrainSea"/><div className="terrainDesert"/><div className="terrainVolcano"/><div className="terrainMarsh"/><div className="terrainCastle"/>
                 </div>
+                {items.map(item=>{const visual=visualFor(item);return <button key={item.id} className={"marker finalMarker marker"+item.kind} style={{left:item.x+"%",top:item.y+"%"}} onClick={()=>{setSelected(item);setNotice(iconFor(item.kind)+" "+item.name+" sélectionné.");}}>
+                  <div className={"worldTile tile-"+visual}><div className="tileSky"/><div className="tileScene">
+                    {visual==="ice"&&<><i className="icePeak p1"/><i className="icePeak p2"/><i className="snowDrift"/></>}
+                    {visual==="forest"&&<><i className="tree t1"/><i className="tree t2"/><i className="tree t3"/><i className="tree t4"/></>}
+                    {visual==="desert"&&<><i className="dune d1"/><i className="dune d2"/><i className="sun"/></>}
+                    {visual==="volcano"&&<><i className="volcano"/><i className="lava"/><i className="smoke"/></>}
+                    {visual==="mountain"&&<><i className="mountain m1"/><i className="mountain m2"/><i className="cloud"/></>}
+                    {visual==="ocean"&&<><i className="island"/><i className="wave w1"/><i className="wave w2"/></>}
+                    {visual==="city"&&<><i className="building b1"/><i className="building b2"/><i className="building b3"/><i className="building b4"/></>}
+                    {visual==="village"&&<><i className="house h1"/><i className="house h2"/><i className="house h3"/></>}
+                    {visual==="character"&&<><i className="heroHead"/><i className="heroBody"/><i className="heroGlow"/></>}
+                    {visual==="magic"&&<><i className="crystal c1"/><i className="crystal c2"/><i className="crystal c3"/></>}
+                  </div><div className="tileVignette"/></div><span className="markerLabel">{item.name}</span>
+                </button>})}
               </div>
 
-              <div className="actionDock"><button onClick={() => setTab("Ajouter")}>＋ Ajouter au monde</button><button onClick={() => { setKind("Région"); setTab("Ajouter"); }}>⌁ Région</button><button onClick={() => { setKind("Civilisation"); setTab("Ajouter"); }}>♜ Civilisation</button><button onClick={() => { setKind("Village"); setTab("Ajouter"); }}>⌂ Village</button></div>
-            </>
-          )}
-
-          {tab === "Ajouter" && (
-            <section className="panel">
-              <p className="panelTag">COMMANDE DU CRÉATEUR</p>
-              <h2>Ajouter au monde</h2>
-              <p className="panelSub">Tout ajout est placé immédiatement sur la carte. Tu ne supprimes pas l'histoire : tu crées de nouvelles conséquences.</p>
-              <div className="quickAdd">
-                {(["Région", "Civilisation", "Village", "Personnage", "Influence"] as Item["kind"][]).map((entry) => <button key={entry} className={kind === entry ? "active" : ""} onClick={() => setKind(entry)}>{iconFor(entry)} {entry}</button>)}
+              {!items.length&&<div className="cinematicEmpty"><span>✧</span><b>TON MONDE ATTEND SA PREMIÈRE IDÉE</b><small>Choisis un élément à gauche : il apparaîtra immédiatement comme une partie réelle du monde.</small></div>}
+              <div className="mapLabels">
+                <span className="labelIce">◈ Les Terres Gelées</span><span className="labelForest">♣ Forêt d'Émeraude</span><span className="labelCity">♜ Royaume d'Astralys</span><span className="labelVolcano">♨ Monts Arkan</span><span className="labelDesert">△ Désert de Karsh</span><span className="labelMarsh">✦ Marais d'Ombrelune</span>
               </div>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={"Nom de " + kind.toLowerCase()} />
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description, rôle, pouvoir ou conséquence..." />
-              {kind === "Personnage" && <label className="toggle"><input type="checkbox" checked={allowNPC} onChange={(e) => setAllowNPC(e.target.checked)} /> Autoriser les PNJ que le créateur ajoute volontairement</label>}
-              <button className="primary" onClick={createItem}>Créer et placer immédiatement →</button>
-            </section>
-          )}
-
-          {tab === "Chronologie" && (
-            <section className="panel">
-              <p className="panelTag">HISTOIRE PERMANENTE</p>
-              <h2>Chronologie</h2>
-              <p className="panelSub">Les personnages ne sont jamais créés automatiquement. Les événements viennent uniquement de tes créations et de leurs conséquences futures.</p>
-              <div className="timeline">
-                {timeline.map((item) => <div className="timelineItem" key={item.id}><b>JOUR {item.day}</b><p>{iconFor(item.kind)} {item.name}</p><span>{item.description}</span></div>)}
-                {!timeline.length && <div className="emptyPanel">Le monde vient de naître. Son histoire attend ton premier choix.</div>}
-              </div>
-            </section>
-          )}
+              <div className="compass">✦<small>N</small></div>
+              {selected&&<div className="entityInspector finalInspector"><button className="closeInspect" onClick={()=>setSelected(null)}>×</button><div className="inspectIcon">{iconFor(selected.kind)}</div><small>ÉLÉMENT DU MONDE</small><b>{selected.name}</b><p>{selected.description}</p><button onClick={()=>setTab("Chronologie")}>Voir dans l'histoire →</button></div>}
+            </div>
+          </div>
+          <div className="worldQuote">« Chaque idée façonne un monde. »</div>
         </section>
 
-        <aside className="intel">
-          <small>ACTIVITÉ DU MONDE</small>
-          <div className="intelDay">JOUR {day}</div>
-          <p>Le monde évolue à partir de ce que tu as créé. Aucune civilisation ou aucun personnage n'apparaît arbitrairement.</p>
-          <button className="primary wide" onClick={advance}>Continuer l'histoire →</button>
+        <aside className="finalRight">
+          <div className="glassPanel currentWorld">
+            <div className="panelHeader"><h3>Monde actuel</h3><button>×</button></div>
+            <div className="worldPreview"/>
+            <h2>{title}</h2>
+            <dl><div><dt>Thème :</dt><dd>{theme}</dd></div><div><dt>Créé le :</dt><dd>13 septembre 2026</dd></div><div><dt>Éléments :</dt><dd>{items.length}</dd></div><div><dt>Statut :</dt><dd className="online">● En développement</dd></div></dl>
+          </div>
+          <div className="glassPanel chronoCard">
+            <div className="panelHeader"><h3>Chronologie</h3><button onClick={()=>setTab("Chronologie")}>×</button></div>
+            <b>Jour {day}</b>
+            <div className="chronoList">
+              {!timeline.length&&<p>✧ Création du monde {title}</p>}
+              {timeline.slice(-4).map(item=><p key={item.id}><span>{iconFor(item.kind)}</span>{item.name}<small>Jour {item.day}</small></p>)}
+            </div>
+            <button className="fullChrono" onClick={()=>setTab("Chronologie")}>Voir toute la chronologie →</button>
+          </div>
         </aside>
-      </div>
+      </section>
+
+      <footer className="finalFooter">
+        <button onClick={()=>setTab("Ajouter")}>✧ <span>CRÉER</span><small>Ajouter au monde</small></button>
+        <button onClick={()=>{setKind("Civilisation");setTab("Ajouter")}}>◆ <span>DONNER VIE</span><small>Ajouter une civilisation</small></button>
+        <button onClick={()=>setTab("Chronologie")}>⌛ <span>SIMULER</span><small>Avancer dans le temps</small></button>
+        <button onClick={advance}>✦ <span>FAÇONNER LE MONDE</span><small>Créer une conséquence</small></button>
+        <div className="footerMark">✧ ARTHENIS</div>
+      </footer>
+
+      {tab==="Ajouter"&&<div className="commandOverlay" onClick={()=>setTab("Carte")}><section className="commandModal" onClick={e=>e.stopPropagation()}>
+        <div className="panelHeader"><div><p className="panelTag">COMMANDE DU CRÉATEUR</p><h2>Ajouter au monde</h2></div><button onClick={()=>setTab("Carte")}>×</button></div>
+        <p className="panelSub">Ton ajout apparaît immédiatement sur la carte et devient une conséquence réelle de l'histoire.</p>
+        <div className="quickAdd">{(["Région","Civilisation","Village","Personnage","Influence"] as Item["kind"][]).map(entry=><button key={entry} className={kind===entry?"active":""} onClick={()=>setKind(entry)}>{iconFor(entry)} {entry}</button>)}</div>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder={"Nom de "+kind.toLowerCase()}/>
+        <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Décris précisément ce qui doit apparaître dans le monde..."/>
+        {kind==="Personnage"&&<label className="toggle"><input type="checkbox" checked={allowNPC} onChange={e=>setAllowNPC(e.target.checked)}/> Autoriser les PNJ ajoutés volontairement par le créateur</label>}
+        <button className="primary createNow" onClick={()=>{createItem();}}>Créer et placer immédiatement →</button>
+      </section></div>}
+
+      {tab==="Chronologie"&&<div className="commandOverlay" onClick={()=>setTab("Carte")}><section className="commandModal chronoModal" onClick={e=>e.stopPropagation()}>
+        <div className="panelHeader"><div><p className="panelTag">HISTOIRE PERMANENTE</p><h2>Chronologie</h2></div><button onClick={()=>setTab("Carte")}>×</button></div>
+        <div className="timeline">{timeline.map(item=><div className="timelineItem" key={item.id}><b>JOUR {item.day}</b><p>{iconFor(item.kind)} {item.name}</p><span>{item.description}</span></div>)}{!timeline.length&&<div className="emptyPanel">Le monde vient de naître. Son histoire attend ton premier choix.</div>}</div>
+      </section></div>}
     </main>
-  );
-}
+  );}
