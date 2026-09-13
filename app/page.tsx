@@ -18,6 +18,22 @@ const iconFor = (kind: Item["kind"]) =>
   kind === "Village" ? "⌂" :
   kind === "Personnage" ? "♙" : "✦";
 
+type Visual = "ice" | "forest" | "desert" | "volcano" | "mountain" | "ocean" | "city" | "village" | "character" | "magic";
+
+const visualFor = (item: Item): Visual => {
+  const text = (item.name + " " + item.description).toLowerCase();
+  if (item.kind === "Personnage") return "character";
+  if (item.kind === "Influence") return "magic";
+  if (item.kind === "Civilisation") return "city";
+  if (item.kind === "Village") return "village";
+  if (/glace|glacier|neige|neig|arct|froid|gel|ice|snow/.test(text)) return "ice";
+  if (/forêt|foret|jungle|bois|verdure|forest/.test(text)) return "forest";
+  if (/désert|desert|sable|dune/.test(text)) return "desert";
+  if (/volcan|lave|magma|feu/.test(text)) return "volcano";
+  if (/océan|ocean|mer|île|ile|rivage/.test(text)) return "ocean";
+  return "mountain";
+};
+
 export default function Home() {
   const [screen, setScreen] = useState<"home" | "create" | "world">("home");
   const [step, setStep] = useState(1);
@@ -180,16 +196,35 @@ export default function Home() {
                 >
                   <div className="mapViewport" style={{ transform: "translate(" + pan.x + "px," + pan.y + "px) scale(" + zoom + ")" }}>
                     <div className="mapGrid" />
-                    {items.map((item) => (
-                      <button
-                        key={item.id}
-                        className={"marker marker" + item.kind}
-                        style={{ left: item.x + "%", top: item.y + "%" }}
-                        onClick={() => { setSelected(item); setNotice(iconFor(item.kind) + " " + item.name + " sélectionné."); }}
-                      >
-                        <b>{iconFor(item.kind)}</b><span>{item.name}</span>
-                      </button>
-                    ))}
+                    {items.map((item) => {
+                      const visual = visualFor(item);
+                      return (
+                        <button
+                          key={item.id}
+                          className={"marker marker" + item.kind}
+                          style={{ left: item.x + "%", top: item.y + "%" }}
+                          onClick={() => { setSelected(item); setNotice(iconFor(item.kind) + " " + item.name + " sélectionné."); }}
+                        >
+                          <div className={"worldTile tile-" + visual}>
+                            <div className="tileSky" />
+                            <div className="tileScene">
+                              {visual === "ice" && <><i className="icePeak p1" /><i className="icePeak p2" /><i className="snowDrift" /></>}
+                              {visual === "forest" && <><i className="tree t1" /><i className="tree t2" /><i className="tree t3" /><i className="tree t4" /></>}
+                              {visual === "desert" && <><i className="dune d1" /><i className="dune d2" /><i className="sun" /></>}
+                              {visual === "volcano" && <><i className="volcano" /><i className="lava" /><i className="smoke" /></>}
+                              {visual === "mountain" && <><i className="mountain m1" /><i className="mountain m2" /><i className="cloud" /></>}
+                              {visual === "ocean" && <><i className="island" /><i className="wave w1" /><i className="wave w2" /></>}
+                              {visual === "city" && <><i className="building b1" /><i className="building b2" /><i className="building b3" /><i className="building b4" /></>}
+                              {visual === "village" && <><i className="house h1" /><i className="house h2" /><i className="house h3" /></>}
+                              {visual === "character" && <><i className="heroHead" /><i className="heroBody" /><i className="heroGlow" /></>}
+                              {visual === "magic" && <><i className="crystal c1" /><i className="crystal c2" /><i className="crystal c3" /></>}
+                            </div>
+                            <div className="tileVignette" />
+                          </div>
+                          <span className="markerLabel">{item.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {!items.length && <div className="emptyMap"><b>CARTE VIERGE</b><small>Ton monde n'existe encore que par tes choix. Ajoute un premier élément : il sera placé ici immédiatement.</small></div>}
