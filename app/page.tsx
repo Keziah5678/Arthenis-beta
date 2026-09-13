@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
 
 type Region={id:number;name:string;state:string};
 type Civ={id:number;name:string;description:string};
@@ -58,7 +58,7 @@ export default function Home(){
  const log=(text:string,impact:string)=>setEvents(e=>[{id:Date.now()+Math.random(),day,text,impact},...e]);
  const changeZoom=(delta:number)=>setZoom(z=>Math.max(.7,Math.min(3,Number((z+delta).toFixed(2)))));
  const resetView=()=>{setZoom(1);setPan({x:0,y:0})};
- const beginDrag=(e:React.PointerEvent<HTMLDivElement>)=>{if((e.target as HTMLElement).closest("button"))return;dragRef.current={x:e.clientX,y:e.clientY,panX:pan.x,panY:pan.y,active:true};e.currentTarget.setPointerCapture?.(e.pointerId)};
+ const beginDrag=(e:ReactPointerEvent<HTMLDivElement>)=>{if((e.target as HTMLElement).closest("button"))return;dragRef.current={x:e.clientX,y:e.clientY,panX:pan.x,panY:pan.y,active:true};e.currentTarget.setPointerCapture?.(e.pointerId)};
  const moveDrag=(e:React.PointerEvent<HTMLDivElement>)=>{if(!dragRef.current.active)return;setPan({x:dragRef.current.panX+e.clientX-dragRef.current.x,y:dragRef.current.panY+e.clientY-dragRef.current.y})};
  const endDrag=()=>{dragRef.current.active=false};
 
@@ -73,7 +73,7 @@ export default function Home(){
  const createResponse=()=>{if(!responseIdea.trim()||!responseTarget)return;const a=coherence(responseIdea);if(!a.ok)return setNotice("⚠ "+a.msg);const text=responseIdea.trim();log("Contre-influence : "+text,"Cette nouvelle cause tente de répondre à une conséquence existante.");setConsequences(x=>[...x,{id:Date.now(),due:day+1,text:"La contre-influence « "+text+" » produit ses premiers effets.",impact:"Le monde révèle si cette réponse limite, transforme ou aggrave la situation. Rien n'est effacé."}]);setResponseIdea("");setNotice("⚔ Contre-influence créée · cohérence "+a.score+"/100");};
  const advance=()=>{const next=day+1;const due=consequences.filter(c=>c.due<=next);if(due.length){setEvents(e=>[...due.map(c=>({id:c.id,day:next,text:c.text,impact:c.impact})),...e]);setConsequences(c=>c.filter(x=>x.due>next));setNotice("⏳ Le temps révèle "+due.length+" nouvelle(s) conséquence(s).");}else setNotice("⏳ Jour "+next+" · le monde continue d'évoluer.");setDay(next);};
 
- const stats=useMemo(()=>[{n:regions.length,l:"Régions"},{n:civs.length,l:"Civilisations"},{n:villages.length,l:"Villages"},{n:chars.length,l:"Personnages"},{n:events.length,l:"Événements"}],[regions,civs,chars,events]);
+ const stats=useMemo(()=>[{n:regions.length,l:"Régions"},{n:civs.length,l:"Civilisations"},{n:villages.length,l:"Villages"},{n:chars.length,l:"Personnages"},{n:events.length,l:"Événements"}],[regions,civs,villages,chars,events]);
 
  if(screen==="home")return <main className="landing"><div className="landingGlow"/><nav><div className="brand">✦ ARTHENIS <small>WHERE WORLDS ARE BORN</small></div><button className="primary" onClick={()=>setScreen("create")}>Créer un monde</button></nav><section className="hero"><p>SIMULATEUR DE MONDES VIVANTS</p><h1>Tu écris le commencement.<br/><em>Le monde écrit la suite.</em></h1><span>Crée uniquement ce que tu veux voir exister. Observe ensuite les conséquences.</span><button className="primary big" onClick={()=>setScreen("create")}>Entrer dans Arthenis →</button></section></main>;
 
