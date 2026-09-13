@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 type Region={id:number;name:string;state:string};
 type Civ={id:number;name:string;description:string};
@@ -76,5 +76,5 @@ export default function Home(){
  </section><aside className="intel"><small>ACTIVITÉ DU MONDE</small><div className="intelDay">JOUR {day}</div><p>Le monde n'invente pas de personnages sans ta permission. Il évolue uniquement à partir de ce qui existe déjà.</p><div className="intelFeed">{events.slice(0,5).map(e=><div key={e.id}><b>Jour {e.day}</b>{e.text}</div>)}</div><button className="primary wide" onClick={advance}>Continuer l'histoire →</button></aside></div></main>;
 }
 
-function Panel({title,subtitle,children}:{title:string;subtitle:string;children:React.ReactNode}){return <div className="panel"><p className="panelTag">COMMANDE DU CRÉATEUR</p><h2>{title}</h2><p className="panelSub">{subtitle}</p>{children}</div>}
+function Panel({title,subtitle,children}:{title:string;subtitle:string;children:ReactNode}){return <div className="panel"><p className="panelTag">COMMANDE DU CRÉATEUR</p><h2>{title}</h2><p className="panelSub">{subtitle}</p>{children}</div>}
 function List({items}:{items:{title:string;text:string}[]}){return <div className="cards">{items.map((x,i)=><div className="worldCard" key={i}><b>{x.title}</b><span>{x.text}</span></div>)}</div>}
