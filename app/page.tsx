@@ -1,5 +1,7 @@
 "use client";
 
+// Arthenis build integrity: current production game entry point.
+
 import { useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
 
 type Region={id:number;name:string;state:string};
