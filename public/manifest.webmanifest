@@ -1,0 +1,13 @@
+{
+  "name": "Arthenis — Where worlds are born",
+  "short_name": "Arthenis",
+  "description": "Crée, explore et fais évoluer ton monde comme dans un jeu.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05030a",
+  "theme_color": "#05030a",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
