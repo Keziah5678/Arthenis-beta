@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const response = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "gpt-image-1", prompt: JSON.stringify(visualSpec), size: "1024x1024" })
+    body: JSON.stringify({ model: "gpt-image-2", prompt: JSON.stringify(visualSpec), size: "1024x1024" })
   });
 
   if (!response.ok) return NextResponse.json({ error: "Image generation failed." }, { status: 502 });
