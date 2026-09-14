@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase/client";
+import { supabase, supabaseConfigured, getSupabaseConfigurationError } from "../lib/supabase/client";
 
 type Kind = "Région" | "Civilisation" | "Village" | "Personnage" | "Influence";
 type Item = { id: string; kind: Kind; name: string; description: string; day: number; x: number; y: number; imageUrl?: string | null };
@@ -28,6 +28,7 @@ type AuthModalProps = {
  email: string;
  password: string;
  busy: boolean;
+ notice: string;
  onClose: () => void;
  onEmailChange: (value: string) => void;
  onPasswordChange: (value: string) => void;
@@ -35,7 +36,7 @@ type AuthModalProps = {
  onToggleMode: () => void;
 };
 
-function AuthModal({authMode,email,password,busy,onClose,onEmailChange,onPasswordChange,onAuthenticate,onToggleMode}: AuthModalProps){
+function AuthModal({authMode,email,password,busy,notice,onClose,onEmailChange,onPasswordChange,onAuthenticate,onToggleMode}: AuthModalProps){
  return <div className="commandOverlay">
   <section className="commandModal">
    <div className="panelHeader">
@@ -45,7 +46,7 @@ function AuthModal({authMode,email,password,busy,onClose,onEmailChange,onPasswor
    <input type="email" value={email} onChange={e=>onEmailChange(e.target.value)} placeholder="E-mail"/>
    <input type="password" value={password} onChange={e=>onPasswordChange(e.target.value)} placeholder="Mot de passe (6 caractères minimum)"/>
    <button className="primary createNow" disabled={busy} onClick={onAuthenticate}>{busy?"Patiente…":authMode==="signin"?"Se connecter":"Créer mon compte"}</button>
-   <button onClick={onToggleMode}>{authMode==="signin"?"Créer un compte":"J'ai déjà un compte"}</button>
+   {notice&&<p className="authNotice">{notice}</p>}<button onClick={onToggleMode}>{authMode==="signin"?"Créer un compte":"J'ai déjà un compte"}</button>
   </section>
  </div>;
 }
@@ -79,9 +80,23 @@ export default function Home(){
  }
 
  async function authenticate(){
-  setBusy(true);setNotice("");
-  const result=authMode==="signup"?await supabase.auth.signUp({email,password}):await supabase.auth.signInWithPassword({email,password});
-  setBusy(false);if(result.error){setNotice(result.error.message);return;}setAuthOpen(false);setNotice(authMode==="signup"?"Compte créé. Vérifie ton e-mail si Supabase demande une confirmation.":"Connexion réussie.");
+  setNotice("");
+  if(!supabaseConfigured){setNotice(getSupabaseConfigurationError()||"Supabase n'est pas configuré.");return;}
+  if(!email.trim()||!password){setNotice("Entre ton e-mail et ton mot de passe.");return;}
+  if(authMode==="signup"&&password.length<6){setNotice("Le mot de passe doit contenir au moins 6 caractères.");return;}
+  setBusy(true);
+  try{
+   const result=authMode==="signup"
+    ?await supabase.auth.signUp({email:email.trim(),password})
+    :await supabase.auth.signInWithPassword({email:email.trim(),password});
+   if(result.error){setNotice(result.error.message);return;}
+   setAuthOpen(false);
+   setNotice(authMode==="signup"
+    ?"Compte créé. Vérifie ton e-mail si une confirmation est demandée, puis reconnecte-toi."
+    :"Connexion réussie.");
+  }catch(error){
+   setNotice(error instanceof Error?error.message:"Une erreur est survenue pendant l'authentification.");
+  }finally{setBusy(false);}
  }
 
  async function createWorld(){
@@ -131,12 +146,12 @@ export default function Home(){
 
  if(!ready)return <main className="landing"><section className="hero"><p className="eyebrow">✦ ARTHENIS</p><h1>Chargement du monde…</h1></section></main>;
 
- if(screen==="home")return <main className="landing"><section className="hero"><p className="eyebrow">✦ ARTHENIS · WHERE WORLDS ARE BORN</p><h1>Crée un monde.<br/>Observe ses conséquences.</h1><p>Arthenis transforme tes idées en un univers cohérent, vivant et persistant.</p><div className="heroActions"><button className="primary" onClick={()=>setScreen("create")}>▶ Créer un monde</button><button onClick={()=>world?setScreen("world"):setAuthOpen(true)}>{world?"Continuer mon monde":"Se connecter"}</button></div>{sessionEmail&&<small>Connecté : {sessionEmail}</small>}</section>{authOpen&&<AuthModal authMode={authMode} email={email} password={password} busy={busy} onClose={()=>setAuthOpen(false)} onEmailChange={setEmail} onPasswordChange={setPassword} onAuthenticate={authenticate} onToggleMode={()=>setAuthMode(v=>v==="signin"?"signup":"signin")}/>}</main>;
+ if(screen==="home")return <main className="landing"><section className="hero"><p className="eyebrow">✦ ARTHENIS · WHERE WORLDS ARE BORN</p><h1>Crée un monde.<br/>Observe ses conséquences.</h1><p>Arthenis transforme tes idées en un univers cohérent, vivant et persistant.</p><div className="heroActions"><button className="primary" onClick={()=>setScreen("create")}>▶ Créer un monde</button><button onClick={()=>world?setScreen("world"):setAuthOpen(true)}>{world?"Continuer mon monde":"Se connecter"}</button></div>{sessionEmail&&<small>Connecté : {sessionEmail}</small>}</section>{authOpen&&<AuthModal authMode={authMode} email={email} password={password} busy={busy} notice={notice} onClose={()=>setAuthOpen(false)} onEmailChange={setEmail} onPasswordChange={setPassword} onAuthenticate={authenticate} onToggleMode={()=>setAuthMode(v=>v==="signin"?"signup":"signin")}/>}</main>;
 
  if(screen==="create")return <main className="creator"><header className="creatorTop"><b>✦ ARTHENIS</b><span>CRÉATION DU MONDE · ÉTAPE {step}/3</span></header><div className="stepDots"><i className={step>=1?"on":""}/><i className={step>=2?"on":""}/><i className={step>=3?"on":""}/></div>
  {step===1&&<section className="createCard"><p className="panelTag">IDENTITÉ</p><h1>Comment s'appelle ton monde ?</h1><input autoFocus value={worldName} onChange={e=>setWorldName(e.target.value)} placeholder="Ex. Valdoria"/><button className="primary" onClick={()=>setStep(2)}>Continuer →</button></section>}
  {step===2&&<section className="createCard"><p className="panelTag">RÈGLES FONDAMENTALES</p><h1>Quelle est la nature de ce monde ?</h1><select value={theme} onChange={e=>setTheme(e.target.value)}><option>Fantasy</option><option>Médiéval</option><option>Science-fiction</option><option>Historique</option><option>Contemporain</option></select><label className="toggle"><input type="checkbox" checked={fiction} onChange={e=>setFiction(e.target.checked)}/> Autoriser la fiction</label><label className="toggle"><input type="checkbox" checked={fictionalCreatures} onChange={e=>setFictionalCreatures(e.target.checked)}/> Autoriser les créatures fictives</label><label className="toggle"><input type="checkbox" checked={magic} onChange={e=>setMagic(e.target.checked)}/> Autoriser la magie</label><div className="heroActions"><button onClick={()=>setStep(1)}>← Retour</button><button className="primary" onClick={()=>setStep(3)}>Continuer →</button></div></section>}
- {step===3&&<section className="createCard"><p className="panelTag">NAISSANCE</p><h1>{title} est prêt à naître.</h1><p>Arthenis créera une mémoire, des règles et une base persistante pour ton monde.</p><div className="heroActions"><button onClick={()=>setStep(2)}>← Retour</button><button className="primary" disabled={busy} onClick={createWorld}>{busy?"Création…":"Découvrir le monde →"}</button></div>{notice&&<p>{notice}</p>}</section>}{authOpen&&<AuthModal authMode={authMode} email={email} password={password} busy={busy} onClose={()=>setAuthOpen(false)} onEmailChange={setEmail} onPasswordChange={setPassword} onAuthenticate={authenticate} onToggleMode={()=>setAuthMode(v=>v==="signin"?"signup":"signin")}/>}</main>;
+ {step===3&&<section className="createCard"><p className="panelTag">NAISSANCE</p><h1>{title} est prêt à naître.</h1><p>Arthenis créera une mémoire, des règles et une base persistante pour ton monde.</p><div className="heroActions"><button onClick={()=>setStep(2)}>← Retour</button><button className="primary" disabled={busy} onClick={createWorld}>{busy?"Création…":"Découvrir le monde →"}</button></div>{notice&&<p>{notice}</p>}</section>}{authOpen&&<AuthModal authMode={authMode} email={email} password={password} busy={busy} notice={notice} onClose={()=>setAuthOpen(false)} onEmailChange={setEmail} onPasswordChange={setPassword} onAuthenticate={authenticate} onToggleMode={()=>setAuthMode(v=>v==="signin"?"signup":"signin")}/>}</main>;
 
  return <main className="game arthenisFinal" onContextMenu={e=>e.preventDefault()}>
  <header className="finalTopbar"><button className="finalBrand" onClick={()=>setScreen("home")}><span>✧</span><div><strong>ARTHENIS</strong><small>WHERE WORLDS ARE BORN</small></div></button><nav className="finalNav">{[["Carte","◈"],["Ajouter","♙"],["Civilisations","♜"],["Événements","▣"],["Chronologie","⌛"]].map(([entry,icon])=><button key={entry} className={tab===entry?"selected":""} onClick={()=>{if(entry==="Civilisations"){setKind("Civilisation");setTab("Ajouter")}else if(entry==="Événements"){setKind("Influence");setTab("Ajouter")}else setTab(entry)}}><i>{icon}</i><span>{entry}</span></button>)}</nav><button className="saveButton" onClick={()=>world&&loadItems(world.id)}>▣ Synchroniser</button><button className="creatorAvatar" onClick={()=>{if(sessionEmail){supabase.auth.signOut();setScreen("home")}else setAuthOpen(true)}}>{sessionEmail?"K":"?"}</button></header>
@@ -147,7 +162,7 @@ export default function Home(){
  <footer className="finalFooter"><button onClick={()=>setTab("Ajouter")}>✧ <span>CRÉER</span><small>Ajouter au monde</small></button><button onClick={()=>{setKind("Civilisation");setTab("Ajouter")}}>◆ <span>DONNER VIE</span><small>Ajouter une civilisation</small></button><button onClick={()=>setTab("Chronologie")}>⌛ <span>HISTOIRE</span><small>Voir la chronologie</small></button><button onClick={advance}>✦ <span>FAÇONNER LE MONDE</span><small>Avancer dans le temps</small></button><div className="footerMark">✧ ARTHENIS</div></footer>
  {tab==="Ajouter"&&<div className="commandOverlay" onClick={()=>setTab("Carte")}><section className="commandModal" onClick={e=>e.stopPropagation()}><div className="panelHeader"><div><p className="panelTag">COMMANDE DU CRÉATEUR</p><h2>Ajouter au monde</h2></div><button onClick={()=>setTab("Carte")}>×</button></div><p className="panelSub">Arthenis vérifie la cohérence puis inscrit ton idée dans la mémoire du monde.</p><div className="quickAdd">{(["Région","Civilisation","Village","Personnage","Influence"] as Kind[]).map(entry=><button key={entry} className={kind===entry?"active":""} onClick={()=>setKind(entry)}>{iconFor(entry)} {entry}</button>)}</div><input value={name} onChange={e=>setName(e.target.value)} placeholder={"Nom de "+kind.toLowerCase()}/><textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Décris précisément ce qui doit apparaître dans le monde..."/>{kind==="Personnage"&&<label className="toggle"><input type="checkbox" checked={allowNPC} onChange={e=>setAllowNPC(e.target.checked)}/> Autoriser les PNJ</label>}<button className="primary createNow" disabled={busy} onClick={createItem}>{busy?"Arthenis travaille…":"Créer, valider et visualiser →"}</button></section></div>}
  {tab==="Chronologie"&&<div className="commandOverlay" onClick={()=>setTab("Carte")}><section className="commandModal chronoModal" onClick={e=>e.stopPropagation()}><div className="panelHeader"><div><p className="panelTag">HISTOIRE PERMANENTE</p><h2>Chronologie</h2></div><button onClick={()=>setTab("Carte")}>×</button></div><div className="timeline">{timeline.map(item=><div className="timelineItem" key={item.id}><b>JOUR {item.day}</b><p>{iconFor(item.kind)} {item.name}</p><span>{item.description}</span></div>)}{!timeline.length&&<div className="emptyPanel">Le monde vient de naître. Son histoire attend ton premier choix.</div>}</div></section></div>}
- {authOpen&&<AuthModal authMode={authMode} email={email} password={password} busy={busy} onClose={()=>setAuthOpen(false)} onEmailChange={setEmail} onPasswordChange={setPassword} onAuthenticate={authenticate} onToggleMode={()=>setAuthMode(v=>v==="signin"?"signup":"signin")}/>}
+ {authOpen&&<AuthModal authMode={authMode} email={email} password={password} busy={busy} notice={notice} onClose={()=>setAuthOpen(false)} onEmailChange={setEmail} onPasswordChange={setPassword} onAuthenticate={authenticate} onToggleMode={()=>setAuthMode(v=>v==="signin"?"signup":"signin")}/>}
  </main>;
 
 }
