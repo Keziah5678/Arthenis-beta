@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase/client";
 
 type Kind = "Région" | "Civilisation" | "Village" | "Personnage" | "Influence";
 type Item = { id: string; kind: Kind; name: string; description: string; day: number; x: number; y: number; imageUrl?: string | null };
-type World = { id: string; name: string; description: string; theme: string; magic_enabled: boolean; fiction_enabled: boolean; fictional_creatures_enabled: boolean };
+type World = { id: string; name: string; description: string; theme: string; magic_enabled: boolean; fiction_enabled: boolean; fictional_creatures_enabled: boolean; visual_bible?: Record<string, unknown>; world_memory?: Record<string, unknown> };
 
 const iconFor=(kind:Kind)=>kind==="Région"?"⌁":kind==="Civilisation"?"♜":kind==="Village"?"⌂":kind==="Personnage"?"♙":"✦";
 const visualFor=(item:Item)=>{
