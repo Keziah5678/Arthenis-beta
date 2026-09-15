@@ -34,14 +34,14 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "OPENAI_API_KEY is not configured." }, { status: 503 });
 
-  const prompt = `You are the Arthenis Coherence Engine. Validate a proposed addition against an existing world. Return ONLY valid JSON with keys decision (accept|modify|reject), reason (string), normalized (object optional), consequences (string array). Never invent rules absent from WORLD. Preserve theme, era, geography, technology, magic and creature constraints. If the proposal conflicts with a rule, reject it.\n\nWORLD:\n${JSON.stringify(context)}\n\nPROPOSAL:\n${JSON.stringify(proposal)}`;
+  const prompt = `You are the Arthenis Coherence Engine. Validate a proposed addition against an existing world. Return ONLY valid JSON with keys decision (accept|reject), reason (string), consequences (string array). Never invent rules absent from WORLD. Preserve theme, era, geography, technology, magic and creature constraints. If the proposal conflicts with a rule, reject it. Do not propose modifications: reject any proposal that needs modification.\n\nWORLD:\n${JSON.stringify(context)}\n\nPROPOSAL:\n${JSON.stringify(proposal)}`;
   try {
     const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "gpt-5.6-luna", input: prompt }) });
     if (!response.ok) return NextResponse.json({ error: "The coherence AI is temporarily unavailable." }, { status: 502 });
     const data = await response.json();
     const raw = String(data.output_text ?? "{}").replace(/^```json\s*/i, "").replace(/```\s*$/i, "");
     const result = JSON.parse(raw) as CoherenceResult;
-    if (!["accept", "modify", "reject"].includes(result.decision) || typeof result.reason !== "string" || !Array.isArray(result.consequences)) throw new Error("Invalid coherence schema");
+    if (!["accept", "reject"].includes(result.decision) || typeof result.reason !== "string" || !Array.isArray(result.consequences)) throw new Error("Invalid coherence schema");
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "The coherence AI returned an invalid or unavailable response." }, { status: 502 });
