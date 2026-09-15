@@ -30,6 +30,7 @@ export default function ArthenisApp(){
  const [name,setName]=useState(""),[description,setDescription]=useState(""),[kind,setKind]=useState<Kind>("Région"),[role,setRole]=useState(""),[profession,setProfession]=useState(""),[magicLevel,setMagicLevel]=useState("0"),[aiEvolve,setAiEvolve]=useState(true),[composerPortrait,setComposerPortrait]=useState<string|null>(null),[portraitBusy,setPortraitBusy]=useState(false),[memberId,setMemberId]=useState(""),[memberRole,setMemberRole]=useState("viewer"),[drafts,setDrafts]=useState<Record<string,{title:string;description:string}>>({}),[editingRuleId,setEditingRuleId]=useState<string|null>(null),[editingDescription,setEditingDescription]=useState(false),[descDraft,setDescDraft]=useState("");
  const [isPublic,setIsPublic]=useState(false);
  const [exploreSubTab,setExploreSubTab]=useState<"decouvrir"|"mesmondes"|"suivis">("decouvrir"),[exploreQuery,setExploreQuery]=useState(""),[communityCards,setCommunityCards]=useState<CommunityCard[]>([]),[followedCards,setFollowedCards]=useState<CommunityCard[]>([]),[communityLoading,setCommunityLoading]=useState(false),[demoLiked,setDemoLiked]=useState<Set<string>>(new Set()),[demoFollowed,setDemoFollowed]=useState<Set<string>>(new Set());
+ const [assistantOpen,setAssistantOpen]=useState(false),[chatMessages,setChatMessages]=useState<{role:"user"|"assistant";text:string}[]>([]),[chatInput,setChatInput]=useState(""),[chatBusy,setChatBusy]=useState(false);
  const [demoMode,setDemoMode]=useState(false);
  function startDemo(){
   setDemoMode(true);
@@ -52,6 +53,7 @@ export default function ArthenisApp(){
   setWorld(null);setItems([]);setEvents([]);setRules([]);setMembers([]);setDrafts({});
   setScreen("home");
   setNotice("");
+  setChatMessages([]);setAssistantOpen(false);
  }
  async function ensureWorldVisuals(w:World,isDemo:boolean){
   const vb:Record<string,unknown>={...(w.visual_bible||{})};
@@ -72,7 +74,7 @@ export default function ArthenisApp(){
  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only effect; loadWorlds is stable enough for this init/subscribe pattern
  useEffect(()=>{(async()=>{const {data:{session:s}}=await supabase.auth.getSession();setSession(s);if(s)await loadWorlds();setReady(true)})();const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>{setSession(s);if(s)loadWorlds();else{setWorld(null);setWorlds([]);setItems([])}});return()=>subscription.unsubscribe()},[]);
  async function loadWorlds(){const {data,error}=await supabase.from("worlds").select("*").order("updated_at",{ascending:false});if(error){setNotice(error.message);return}const list=(data||[]) as World[];setWorlds(list);const current=world&&list.find(x=>x.id===world.id);if(current)await selectWorld(current);else if(list[0])await selectWorld(list[0]);}
- async function selectWorld(w:World){setWorld(w);setWorldName(w.name);setTheme(w.theme);setMagic(w.magic_enabled);setFiction(w.fiction_enabled);setFictionalCreatures(w.fictional_creatures_enabled);setDay(Number(w.world_memory?.day||1));setSelected(null);setTab("overview");await Promise.all([loadItems(w.id),loadEvents(w.id),loadRules(w.id),loadMembers(w.id)]);setScreen("world");ensureWorldVisuals(w,false);}
+ async function selectWorld(w:World){setWorld(w);setWorldName(w.name);setTheme(w.theme);setMagic(w.magic_enabled);setFiction(w.fiction_enabled);setFictionalCreatures(w.fictional_creatures_enabled);setDay(Number(w.world_memory?.day||1));setSelected(null);setTab("overview");setChatMessages([]);setAssistantOpen(false);await Promise.all([loadItems(w.id),loadEvents(w.id),loadRules(w.id),loadMembers(w.id)]);setScreen("world");ensureWorldVisuals(w,false);}
  async function loadItems(id:string){const [r,c,p,e,cr]=await Promise.all([supabase.from("regions").select("id,name,description,x,y,image_url").eq("world_id",id),supabase.from("civilizations").select("id,name,description,culture,image_url").eq("world_id",id),supabase.from("characters").select("id,name,biography,image_url").eq("world_id",id),supabase.from("timeline_events").select("id,title,description,world_day,image_url").eq("world_id",id).order("world_day",{ascending:false}),supabase.from("creatures").select("id,name,description,image_url").eq("world_id",id)]);const map=(a:any[],k:Kind,d:string,o:number)=>a.map((x,i)=>({id:x.id,kind:k,name:x.name||x.title,description:x[d]||"",day:Number(x.world_day||1),x:k==="Région"?Number(x.x)||50:12+(i*19+o)%72,y:k==="Région"?Number(x.y)||50:15+(i*23+o)%65,imageUrl:x.image_url||null}));setItems([...map(r.data||[],"Région","description",0),...map(c.data||[],"Civilisation","description",9),...map(p.data||[],"Personnage","biography",17),...map(e.data||[],"Influence","description",31),...map(cr.data||[],"Créature","description",43)]);}
  async function loadEvents(id:string){const {data}=await supabase.from("timeline_events").select("id,title,description,world_day,consequences").eq("world_id",id).order("world_day",{ascending:false}).limit(100);setEvents(data||[]);}
  async function loadRules(id:string){const {data}=await supabase.from("world_rules").select("id,category,title,description,immutable").eq("world_id",id).order("importance",{ascending:false});const r=(data||[]) as Rule[];setRules(r);setDrafts(Object.fromEntries(r.map(x=>[x.id,{title:x.title,description:x.description}])));}
@@ -115,6 +117,23 @@ export default function ArthenisApp(){
  }
  async function openCommunityWorld(card:CommunityCard){if(card.isDemo){setNotice("✦ \""+card.name+"\" est un monde illustratif — connecte-toi pour explorer de vrais mondes créés par la communauté.");return;}if(card.raw)await selectWorld(card.raw);}
  async function toggleWorldPublic(){if(!world)return;const next=!world.is_public;setWorld(cur=>cur?{...cur,is_public:next}:cur);if(!demoMode){try{await supabase.from("worlds").update({is_public:next}).eq("id",world.id);}catch{}}}
+ async function sendChatMessage(text?:string){
+  if(!world)return;
+  const message=(text??chatInput).trim();
+  if(!message||chatBusy)return;
+  const history=chatMessages;
+  setChatMessages(cur=>[...cur,{role:"user",text:message}]);
+  setChatInput("");
+  setChatBusy(true);
+  try{
+   const context={name:world.name,theme:world.theme,magicEnabled:world.magic_enabled,fictionEnabled:world.fiction_enabled,fictionalCreaturesEnabled:world.fictional_creatures_enabled,day,rules:rules.map(r=>({title:r.title,description:r.description})),stats:{regions:regionCount,civilizations:civCount,characters:habitantItems.length,places:lieuItems.length}};
+   const res=await fetch("/api/assistant",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,message,history})});
+   const p=await res.json().catch(()=>null);
+   setChatMessages(cur=>[...cur,{role:"assistant",text:typeof p?.reply==="string"?p.reply:"Je n'ai pas pu répondre pour le moment. Réessaie dans un instant."}]);
+  }catch{
+   setChatMessages(cur=>[...cur,{role:"assistant",text:"Je n'ai pas pu répondre pour le moment. Réessaie dans un instant."}]);
+  }finally{setChatBusy(false);}
+ }
  async function auth(){if(!supabaseConfigured){setNotice(getSupabaseConfigurationError()||"Supabase n'est pas configuré.");return}const e=email.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(e)||password.length<6){setNotice("E-mail valide et mot de passe de 6 caractères minimum requis.");return}setBusy(true);const r=authMode==="signup"?await supabase.auth.signUp({email:e,password,options:{emailRedirectTo:window.location.origin}}):await supabase.auth.signInWithPassword({email:e,password});setBusy(false);if(r.error){setNotice(r.error.message);return}if(authMode==="signup"&&!r.data.session){setNotice("Compte créé. Vérifie ton e-mail puis reconnecte-toi.");return}setSession(r.data.session);setAuthOpen(false);await loadWorlds();}
  async function reset(){const e=email.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(e)){setNotice("Entre ton e-mail.");return}const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo:window.location.origin});setNotice(error?.message||"Lien de réinitialisation envoyé si le compte existe.");}
  async function signOut(){await supabase.auth.signOut();setScreen("home");setWorld(null);setNotice("Déconnecté.");}
@@ -225,6 +244,7 @@ export default function ArthenisApp(){
     </div>
    </div>}
   </section>}
+  {screen==="world"&&world&&!assistantOpen&&<button className="assistantFab" title="Assistant Arthenis" onClick={()=>setAssistantOpen(true)}>✦</button>}
   {selected&&<aside className="inspector"><button onClick={()=>setSelected(null)}>×</button><p className="panelTag">{selected.kind}</p><h3>{selected.name}</h3><EntityVisual item={selected}/><p>{selected.description}</p><small>Jour {selected.day}</small></aside>}
   {screen==="world"&&world&&<nav className="bottomNav">
    <button className={(["overview","habitants","lieux"] as Tab[]).includes(tab)?"active":""} onClick={()=>setTab("overview")}><b>⌂</b>Accueil</button>
@@ -233,6 +253,18 @@ export default function ArthenisApp(){
    <button className={tab==="notifications"?"active":""} onClick={()=>setTab("notifications")}><b>🔔</b>Notifications</button>
    <button className={tab==="profile"?"active":""} onClick={()=>setTab("profile")}><b>◈</b>Profil</button>
   </nav>}
+  {assistantOpen&&world&&<div className="assistantOverlay">
+   <div className="assistantHeader"><button className="close" onClick={()=>setAssistantOpen(false)} aria-label="Fermer">×</button><div className="assistantOrb">✦</div><h2>Assistant Arthenis</h2><p>Ton co-créateur d&apos;univers pour {world.name}</p></div>
+   {chatMessages.length===0&&<div className="assistantChips">
+    <button onClick={()=>sendChatMessage("Décris une nouvelle région pour ce monde.")}>Décris une nouvelle région</button>
+    <button onClick={()=>sendChatMessage("Imagine une civilisation qui pourrait exister ici.")}>Imagine une civilisation</button>
+    <button onClick={()=>sendChatMessage("Suggère un personnage cohérent avec ce monde.")}>Suggère un personnage</button>
+    <button onClick={()=>sendChatMessage("Que pourrait-il se passer ensuite dans ce monde ?")}>Que se passe-t-il ensuite ?</button>
+   </div>}
+   {chatMessages.length===0?<div className="assistantEmpty">Pose une question, propose une idée ou choisis une suggestion ci-dessus — je réponds en tenant compte des règles et de l&apos;état actuel de {world.name}.</div>:
+   <div className="assistantMessages">{chatMessages.map((m,i)=><div key={i} className={`chatBubble ${m.role}`}>{m.text}</div>)}{chatBusy&&<div className="chatBubble assistant">…</div>}</div>}
+   <div className="assistantInputRow"><input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendChatMessage()}} placeholder="Écris ton message…" disabled={chatBusy}/><button className="primary" disabled={chatBusy||!chatInput.trim()} onClick={()=>sendChatMessage()} aria-label="Envoyer">➤</button></div>
+  </div>}
   {authOpen&&<Auth mode={authMode} email={email} password={password} busy={busy} notice={notice} setEmail={setEmail} setPassword={setPassword} auth={auth} reset={reset} toggle={()=>{setAuthMode(m=>m==="signin"?"signup":"signin");setNotice("")}} close={()=>setAuthOpen(false)}/>}
  </main>;
 }
