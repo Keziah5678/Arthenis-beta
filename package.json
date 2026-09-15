@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/stabilize-page.mjs",
+    "prebuild": "node scripts/stabilize-ui.mjs && node scripts/stabilize-page.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
