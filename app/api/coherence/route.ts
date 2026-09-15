@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { CoherenceResult, WorldContext } from "../../../lib/arthenis";
+import { OPENAI_TEXT_MODEL } from "../../../lib/ai/config";
 
 const reject = (reason: string): CoherenceResult => ({ decision: "reject", reason, consequences: [] });
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   const prompt = `You are the Arthenis Coherence Engine. Validate a proposed addition against an existing world. Return ONLY valid JSON with keys decision (accept|reject), reason (string), consequences (string array). Never invent rules absent from WORLD. Preserve theme, era, geography, technology, magic and creature constraints. If the proposal conflicts with a rule, reject it. Do not propose modifications: reject any proposal that needs modification.\n\nWORLD:\n${JSON.stringify(context)}\n\nPROPOSAL:\n${JSON.stringify(proposal)}`;
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "gpt-5.6-luna", input: prompt }) });
+    const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: OPENAI_TEXT_MODEL, input: prompt }) });
     if (!response.ok) return NextResponse.json({ error: "The coherence AI is temporarily unavailable." }, { status: 502 });
     const data = await response.json();
     const raw = String(data.output_text ?? "{}").replace(/^```json\s*/i, "").replace(/```\s*$/i, "");

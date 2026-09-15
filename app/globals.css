@@ -48,3 +48,114 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;bo
 .commandOverlay{position:fixed;inset:0;z-index:60;background:#05030ab8;backdrop-filter:blur(8px);display:grid;place-items:center;padding:20px}.commandModal{width:min(620px,94vw);max-height:88vh;overflow:auto;background:linear-gradient(180deg,#161022,#0d0915);border:1px solid #7a4fa1;border-radius:18px;padding:20px;box-shadow:0 35px 100px #000b}.commandModal .panelHeader{padding:0 0 16px}.commandModal h2{margin:4px 0 0}.commandModal .panelHeader button{font-size:25px}.createNow{width:100%;margin-top:8px}.chronoModal{width:min(720px,94vw)}.finalToast{top:96px}
 @media(max-width:1200px){.arthenisFinal{min-width:0;overflow:auto}.finalLayout{grid-template-columns:230px minmax(500px,1fr) 230px}.finalBrand strong{font-size:25px}.finalNav button{min-width:58px;font-size:9px}.finalNav button i{font-size:17px}.worldMap{min-height:560px}}
 @media(max-width:900px){.finalTopbar{padding:0 12px}.finalBrand small,.finalNav button span{display:none}.finalNav{justify-content:flex-start;overflow:auto}.finalNav button{min-width:42px}.saveButton{font-size:0;width:42px;height:42px;padding:0}.saveButton:first-letter{font-size:17px}.finalLayout{display:block;padding:8px;overflow:auto}.finalLeft,.finalRight{display:none}.worldMap{height:calc(100dvh - 160px);min-height:560px}.finalFooter{display:none}.worldQuote{width:84%;font-size:14px}.mapLabels span{font-size:8px;padding:6px}.finalMarker{width:94px;min-height:96px}.finalMarker .worldTile{height:68px}.cinematicEmpty{width:80%}}
+
+/* ================================================================
+   ARTHENIS APP SHELL — styles for the live ArthenisApp.tsx component.
+   The blocks above target an earlier UI iteration; these match the
+   classNames actually rendered today so the premium dark-purple
+   design system applies to the real app, not just to unused markup.
+   ================================================================ */
+.appShell{min-height:100dvh;width:100%;display:flex;flex-direction:column;background:radial-gradient(circle at 50% -10%,#1c1030 0%,var(--bg) 55%);position:relative;overflow-x:hidden}
+.loadingState{flex:1;display:flex;align-items:center;justify-content:center;letter-spacing:.22em;font-size:12px;color:var(--muted)}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 28px;border-bottom:1px solid var(--line);background:rgba(9,6,15,.72);backdrop-filter:blur(14px);position:sticky;top:0;z-index:30;flex-wrap:wrap}
+.topbar>div:first-child{display:flex;align-items:baseline;gap:10px}
+.topbar strong{font-size:17px;letter-spacing:.1em}
+.topbar>div:first-child span{font-size:9px;letter-spacing:.2em;color:var(--muted)}
+.topActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.topActions span{font-size:12px;color:var(--muted)}
+.topActions select{width:auto;padding:8px 10px;margin:0}
+.topActions button{padding:8px 14px}
+
+.heroScreen{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:760px;margin:0 auto;padding:12vh 24px;gap:14px}
+.heroScreen h1{font-size:clamp(34px,6vw,60px);line-height:1.12;margin:0}
+.heroScreen h1 em{font-style:italic;background:linear-gradient(135deg,#d1a6ff,#8256f0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.heroScreen>p{color:var(--muted);max-width:520px;line-height:1.7;font-size:15px}
+
+.commandPanel{max-width:640px;margin:40px auto;width:100%;background:linear-gradient(180deg,rgba(19,12,32,.92),rgba(10,7,15,.96));border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.45);backdrop-filter:blur(20px)}
+.createPanel{max-width:540px}
+.addPanel{max-width:600px}
+.row{display:flex;gap:10px;margin-top:14px}
+.row button{flex:1}
+.check{display:flex;align-items:center;gap:10px;color:var(--text);font-size:13px;margin:12px 0;cursor:pointer}
+.check input{width:auto;margin:0}
+.muted{color:var(--muted);font-size:12px;line-height:1.6}
+.worldSummary{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0;align-items:center}
+.worldSummary b{width:100%;font-size:20px;font-weight:800}
+.worldSummary span{font-size:11px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:#cbb8e0}
+
+.kindGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.kindGrid button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;font-size:11px}
+.kindGrid button b{font-size:20px}
+.kindGrid button.selected{border-color:var(--purple);background:#251440;box-shadow:inset 0 0 0 1px var(--purple)}
+.advancedFields{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.advancedFields label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.advancedFields label input[type=number]{width:72px;margin:0}
+
+.worldConsole{flex:1;display:flex;flex-direction:column;min-height:0;padding:20px 28px 28px;gap:16px}
+.worldHeader{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px}
+.worldHeader h2{margin:6px 0;font-size:30px}
+.worldHeader>div:first-child span{color:var(--muted);font-size:12px}
+.worldHeaderActions{display:flex;gap:10px;flex-wrap:wrap}
+.worldNav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:10px}
+.worldNav button{border:1px solid transparent;background:transparent;border-radius:10px;padding:8px 14px;font-size:12px;color:var(--muted)}
+.worldNav button.active{color:var(--text);background:#1c1128;border-color:var(--line);box-shadow:inset 0 0 0 1px rgba(165,104,255,.35)}
+
+.mapLayout{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;min-height:520px}
+.mapToolbar{position:absolute;z-index:8;top:14px;left:14px;display:flex;gap:6px;align-items:center;background:rgba(10,7,17,.78);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:6px}
+.mapToolbar button{padding:6px 10px}
+.mapToolbar span{font-size:11px;color:var(--muted);padding:0 6px}
+.gameMap{position:relative;min-height:480px;border-radius:18px;border:1px solid var(--line);background:radial-gradient(circle at 30% 20%,#1c1030,#05030a 72%);overflow:hidden;cursor:grab;touch-action:none}
+.gameMap:active{cursor:grabbing}
+.mapWorld{position:absolute;inset:0;transform-origin:0 0}
+.mapSide{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;height:fit-content}
+.mapSide h3{margin:2px 0}
+
+.inspector{position:absolute;right:14px;top:14px;bottom:14px;width:260px;max-width:calc(100% - 28px);background:rgba(13,9,21,.94);border:1px solid var(--line);border-radius:16px;padding:16px;overflow:auto;backdrop-filter:blur(16px);box-shadow:0 25px 60px rgba(0,0,0,.5);z-index:9}
+.inspector>button:first-child{float:right}
+.inspector h3{margin:8px 0}
+.inspector .worldTile{border-radius:10px;margin:10px 0}
+.inspector small{color:var(--muted)}
+
+.contentGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.entityCard{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:border-color .2s,transform .2s}
+.entityCard:hover{border-color:var(--purple);transform:translateY(-2px)}
+.entityCard .worldTile{height:120px}
+.entityCard h3,.entityCard p,.entityCard .panelTag{padding-left:14px;padding-right:14px}
+.entityCard h3{margin:8px 0 4px}
+.entityCard p{color:var(--muted);font-size:13px;padding-bottom:14px}
+
+.timelineList{display:flex;flex-direction:column;gap:10px}
+.timelineEvent{background:var(--panel);border-left:3px solid var(--purple);border-radius:0 12px 12px 0;padding:14px 18px}
+.timelineEvent>span{font-size:10px;letter-spacing:.14em;color:#9c85c9}
+.timelineEvent h3{margin:6px 0}
+.timelineEvent p{color:var(--muted);font-size:13px;line-height:1.6;margin:0}
+.timelineEvent ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:12px}
+
+.rulesList{display:flex;flex-direction:column;gap:12px}
+.ruleCard{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ruleCard>div{flex:1}
+.ruleCard input,.ruleCard textarea{margin:8px 0 4px}
+.ruleCard textarea{min-height:70px}
+
+.collabPanel{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:16px}
+.membersList{display:flex;flex-direction:column;gap:8px}
+.memberRow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:12px}
+.memberRow span{text-transform:uppercase;font-size:10px;color:var(--muted);min-width:90px}
+.memberRow b{flex:1;font-weight:600;font-size:11px;word-break:break-all}
+
+.toastNotice{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:50;background:#171024;border:1px solid #8657c7;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 15px 50px rgba(0,0,0,.55);font-size:13px;max-width:90vw}
+.toastNotice button{border:0;background:transparent;padding:0;font-size:16px}
+.authNotice{color:#e0b8ff;font-size:12px;line-height:1.5;margin:8px 0}
+.accountBar{display:flex;align-items:center;gap:10px}
+
+/* Character/creature tile art referenced by the live component's Tile() renderer */
+.tile-character .tileSky{background:radial-gradient(circle at 50% 25%,#e3d5ff,#5a3d7b 60%,#24172e)}
+.charHead{position:absolute;left:52px;top:20px;width:23px;height:23px;border-radius:50%;background:#f1c5a5;box-shadow:0 0 18px rgba(255,255,255,.25)}
+.charBody{position:absolute;left:44px;bottom:9px;width:40px;height:48px;border-radius:45% 45% 20% 20%;background:linear-gradient(90deg,#321e54,#8151b4)}
+.tile-creature .tileSky{background:radial-gradient(circle at 50% 30%,#f0c8ff,#4a1c6b 60%,#1a0a2e)}
+.creatureBody{position:absolute;left:38px;bottom:14px;width:52px;height:44px;border-radius:50% 50% 40% 40%;background:linear-gradient(135deg,#8a4dff,#3a1a5e);box-shadow:0 0 18px rgba(165,104,255,.55)}
+.creatureEye{position:absolute;left:58px;bottom:42px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+
+@media(max-width:900px){.mapLayout{grid-template-columns:1fr}.inspector{position:static;width:auto;margin-top:12px}.collabPanel{grid-template-columns:1fr}}
+@media(max-width:700px){.topbar{padding:12px 16px}.worldConsole{padding:14px 16px 22px}.commandPanel{margin:24px auto;padding:20px}}

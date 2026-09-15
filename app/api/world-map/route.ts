@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { OPENAI_TEXT_MODEL } from "../../../lib/ai/config";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     const upstream = await fetch(OPENAI_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "gpt-5.6-luna", input: prompt, text: { format: { type: "json_object" } } })
+      body: JSON.stringify({ model: OPENAI_TEXT_MODEL, input: prompt, text: { format: { type: "json_object" } } })
     });
     if (!upstream.ok) return NextResponse.json({ map: fallbackMap(context.theme), generated: false });
     const result = await upstream.json();

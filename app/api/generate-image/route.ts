@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildVisualPrompt, type WorldContext } from "../../../lib/arthenis";
+import { OPENAI_IMAGE_MODEL } from "../../../lib/ai/config";
 
 export async function POST(request: Request) {
   let body: any;
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-image-2",
+        model: OPENAI_IMAGE_MODEL,
         prompt: JSON.stringify(visualSpec),
         size: "1024x1024"
       })
