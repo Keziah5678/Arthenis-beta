@@ -240,4 +240,21 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;bo
 
 img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
 
+.searchBar{display:flex;align-items:center;gap:8px;background:#100b19;border:1px solid var(--line);border-radius:999px;padding:10px 16px;margin:4px 0 14px}
+.searchBar input{border:0;background:transparent;padding:0;margin:0;flex:1}
+.communityList{display:flex;flex-direction:column;gap:14px}
+.communityCard{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.communityCover{height:120px;position:relative;background:linear-gradient(135deg,#241238,#120a20)}
+.communityCover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.communityBody{padding:14px 16px}
+.communityBody h3{margin:2px 0;cursor:pointer}
+.communityMeta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.communityBody p{color:#c9bdd6;font-size:13px;line-height:1.5;margin:8px 0}
+.communityActions{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.likeButton{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#100b19;border-radius:999px;padding:6px 12px;font-size:12px}
+.likeButton.liked{border-color:#e05fa0;color:#ffb2d6;background:#2a1420}
+.followButton{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 14px;font-size:12px}
+.followButton.following{border-color:var(--purple);color:#e7d8ff;background:#241640}
+.openWorldButton{margin-left:auto}
+
 @media(max-width:900px){.statRow{grid-template-columns:repeat(2,1fr)}}
