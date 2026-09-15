@@ -1,0 +1,30 @@
+name: Patch Arthenis source
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply source stabilization patches
+        run: |
+          node scripts/stabilize-ui.mjs
+          node scripts/stabilize-page.mjs
+      - name: Commit patched source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No source changes needed."
+          else
+            git add app/page.tsx
+            git commit -m "fix: commit Arthenis authentication and creature fixes"
+            git push
+          fi
