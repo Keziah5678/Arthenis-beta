@@ -18,8 +18,8 @@ begin
   return next_day;
 end;
 $$;
-revoke all on function public.advance_world_day(uuid) from anon, authenticated;
-grant execute on function public.advance_world_day(uuid) to authenticated;
+revoke execute on function public.advance_world_day(uuid) from anon, authenticated;
+revoke execute on function public.can_manage_world_members(uuid) from anon, authenticated;
 
 insert into storage.buckets(id,name,public)
 values('arthenis-assets','arthenis-assets',false)
