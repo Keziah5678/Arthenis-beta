@@ -26,6 +26,13 @@ async function requireUser(supabase: ReturnType<typeof clientFor>) {
   return data.user;
 }
 
+async function canManageMembers(supabase: ReturnType<typeof clientFor>, worldId: string, userId: string) {
+  const { data: world } = await supabase.from("worlds").select("owner_id").eq("id", worldId).single();
+  if (world?.owner_id === userId) return true;
+  const { data: membership } = await supabase.from("world_members").select("role").eq("world_id", worldId).eq("user_id", userId).single();
+  return membership?.role === "admin";
+}
+
 export async function POST(request: Request) {
   const supabase = clientFor(request);
   try {
@@ -42,8 +49,9 @@ export async function POST(request: Request) {
       const { data: world, error: worldError } = await supabase.from("worlds").select("id,name,theme,world_memory,fiction_enabled,fictional_creatures_enabled,magic_enabled").eq("id", worldId).single();
       if (worldError || !world) return jsonError("Monde introuvable ou accès refusé.", 404);
 
-      const previousDay = Number((world.world_memory as Record<string, unknown> | null)?.day ?? 1);
-      const nextDay = Number.isFinite(previousDay) && previousDay >= 1 ? Math.floor(previousDay) + 1 : 2;
+      const { data: nextDay, error: advanceError } = await supabase.rpc("advance_world_day", { p_world: worldId });
+      if (advanceError || typeof nextDay !== "number") return jsonError("Impossible de faire avancer le monde de façon sécurisée.", 500);
+
       const { count: regionCount } = await supabase.from("regions").select("id", { count: "exact", head: true }).eq("world_id", worldId);
       const { count: civilizationCount } = await supabase.from("civilizations").select("id", { count: "exact", head: true }).eq("world_id", worldId);
       const { count: creatureCount } = await supabase.from("creatures").select("id", { count: "exact", head: true }).eq("world_id", worldId);
@@ -82,14 +90,14 @@ export async function POST(request: Request) {
       }
 
       const { data: event, error: eventError } = await supabase.from("timeline_events").insert({ world_id: worldId, title, description, world_day: nextDay, consequences }).select().single();
-      if (eventError) return jsonError("Impossible d'enregistrer l'évolution du monde.", 500);
-      const { error: updateError } = await supabase.from("worlds").update({ world_memory: { ...(world.world_memory ?? {}), day: nextDay } }).eq("id", worldId);
-      if (updateError) return jsonError("L'événement a été créé, mais le jour n'a pas pu être sauvegardé.", 500);
+      if (eventError) return jsonError("L'évolution a été calculée mais l'événement n'a pas pu être enregistré.", 500);
       return NextResponse.json({ day: nextDay, event });
     }
 
     if (action === "member-upsert") {
       if (typeof body.userId !== "string" || !UUID_RE.test(body.userId)) return jsonError("Identifiant utilisateur invalide.");
+      if (!(await canManageMembers(supabase, worldId, user.id))) return jsonError("Seul le propriétaire ou un administrateur peut gérer les membres.", 403);
+      if (body.userId === user.id) return jsonError("Le propriétaire ne peut pas se retirer lui-même via cette action.", 400);
       const role = typeof body.role === "string" && ROLES.has(body.role) ? body.role : "viewer";
       const permissions = body.permissions && typeof body.permissions === "object" && !Array.isArray(body.permissions) ? body.permissions : {};
       const { data, error } = await supabase.from("world_members").upsert({ world_id: worldId, user_id: body.userId, role, permissions }, { onConflict: "world_id,user_id" }).select().single();
@@ -99,6 +107,8 @@ export async function POST(request: Request) {
 
     if (action === "member-remove") {
       if (typeof body.userId !== "string" || !UUID_RE.test(body.userId)) return jsonError("Identifiant utilisateur invalide.");
+      if (!(await canManageMembers(supabase, worldId, user.id))) return jsonError("Seul le propriétaire ou un administrateur peut gérer les membres.", 403);
+      if (body.userId === user.id) return jsonError("Le propriétaire ne peut pas se retirer lui-même via cette action.", 400);
       const { error } = await supabase.from("world_members").delete().eq("world_id", worldId).eq("user_id", body.userId);
       if (error) return jsonError("Impossible de retirer ce membre.", 403);
       return NextResponse.json({ ok: true });
