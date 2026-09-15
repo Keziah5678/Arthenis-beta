@@ -11,9 +11,13 @@ create index if not exists worlds_updated_at_idx on public.worlds(updated_at des
 create index if not exists world_rules_world_id_idx on public.world_rules(world_id);
 create index if not exists regions_world_id_idx on public.regions(world_id);
 create index if not exists civilizations_world_id_idx on public.civilizations(world_id);
+create index if not exists civilizations_region_id_idx on public.civilizations(region_id);
 create index if not exists characters_world_id_idx on public.characters(world_id);
+create index if not exists characters_region_id_idx on public.characters(region_id);
 create index if not exists creatures_world_id_idx on public.creatures(world_id);
 create index if not exists timeline_events_world_day_idx on public.timeline_events(world_id, world_day);
 create index if not exists world_members_world_user_idx on public.world_members(world_id, user_id);
+create index if not exists world_members_user_id_idx on public.world_members(user_id);
 create index if not exists creation_proposals_world_created_idx on public.creation_proposals(world_id, created_at desc);
+create index if not exists creation_proposals_author_id_idx on public.creation_proposals(author_id);
 create index if not exists generated_assets_world_entity_idx on public.generated_assets(world_id, entity_type, entity_id);
