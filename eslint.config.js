@@ -11,7 +11,11 @@ module.exports = [
     rules: {
       "react-hooks/purity": "off",
       "react-hooks/immutability": "off",
-      "react-hooks/set-state-in-effect": "off"
+      "react-hooks/set-state-in-effect": "off",
+      // Portraits, world covers and maps are AI-generated data: URLs or
+      // Supabase storage URLs with unpredictable/unknown dimensions —
+      // next/image's static optimization doesn't fit this use case.
+      "@next/next/no-img-element": "off"
     }
   }
 ];
