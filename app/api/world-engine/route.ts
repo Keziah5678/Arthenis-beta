@@ -3,6 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://kqymkheiildnbqaksdlx.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ACTIONS = new Set(["advance", "member-upsert", "member-remove", "rule-update", "proposal"]);
+const ROLES = new Set(["admin", "creator", "contributor", "viewer"]);
+const PROPOSAL_TYPES = new Set(["Région", "Civilisation", "Village", "Personnage", "Créature", "Influence"]);
 
 function clientFor(request: Request) {
   const authorization = request.headers.get("authorization");
@@ -27,7 +31,9 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser(supabase);
     const body = await request.json().catch(() => null);
-    if (!body || typeof body.worldId !== "string" || typeof body.action !== "string") return jsonError("Requête invalide.");
+    if (!body || typeof body !== "object" || Array.isArray(body)) return jsonError("Requête invalide.");
+    if (typeof body.worldId !== "string" || !UUID_RE.test(body.worldId)) return jsonError("Identifiant de monde invalide.");
+    if (typeof body.action !== "string" || !ACTIONS.has(body.action)) return jsonError("Action inconnue.");
 
     const worldId = body.worldId;
     const action = body.action;
@@ -37,14 +43,14 @@ export async function POST(request: Request) {
       if (worldError || !world) return jsonError("Monde introuvable ou accès refusé.", 404);
 
       const previousDay = Number((world.world_memory as Record<string, unknown> | null)?.day ?? 1);
-      const nextDay = previousDay + 1;
+      const nextDay = Number.isFinite(previousDay) && previousDay >= 1 ? Math.floor(previousDay) + 1 : 2;
       const { count: regionCount } = await supabase.from("regions").select("id", { count: "exact", head: true }).eq("world_id", worldId);
       const { count: civilizationCount } = await supabase.from("civilizations").select("id", { count: "exact", head: true }).eq("world_id", worldId);
       const { count: creatureCount } = await supabase.from("creatures").select("id", { count: "exact", head: true }).eq("world_id", worldId);
 
       let title = `Évolution du monde — Jour ${nextDay}`;
       let description = `Le passage du temps transforme progressivement ${world.name}. Les territoires, sociétés et créatures continuent d'évoluer selon les règles établies.`;
-      let consequences: unknown[] = [
+      let consequences: string[] = [
         `Le monde entre dans son jour ${nextDay}.`,
         `${regionCount ?? 0} région(s), ${civilizationCount ?? 0} civilisation(s) et ${creatureCount ?? 0} créature(s) sont actuellement enregistrées.`,
       ];
@@ -64,9 +70,9 @@ export async function POST(request: Request) {
             try {
               const generated = JSON.parse(text);
               if (typeof generated?.title === "string" && typeof generated?.description === "string" && Array.isArray(generated?.consequences)) {
-                title = generated.title.slice(0, 180);
-                description = generated.description.slice(0, 1200);
-                consequences = generated.consequences.filter((item: unknown): item is string => typeof item === "string").slice(0, 6);
+                title = generated.title.trim().slice(0, 180) || title;
+                description = generated.description.trim().slice(0, 1200) || description;
+                consequences = generated.consequences.filter((item: unknown): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 500)).slice(0, 6);
               }
             } catch {
               // Keep deterministic fallback event when the model does not return strict JSON.
@@ -83,35 +89,39 @@ export async function POST(request: Request) {
     }
 
     if (action === "member-upsert") {
-      if (typeof body.userId !== "string") return jsonError("userId requis.");
-      const role = ["admin", "creator", "contributor", "viewer"].includes(body.role) ? body.role : "viewer";
-      const permissions = body.permissions && typeof body.permissions === "object" ? body.permissions : {};
+      if (typeof body.userId !== "string" || !UUID_RE.test(body.userId)) return jsonError("Identifiant utilisateur invalide.");
+      const role = typeof body.role === "string" && ROLES.has(body.role) ? body.role : "viewer";
+      const permissions = body.permissions && typeof body.permissions === "object" && !Array.isArray(body.permissions) ? body.permissions : {};
       const { data, error } = await supabase.from("world_members").upsert({ world_id: worldId, user_id: body.userId, role, permissions }, { onConflict: "world_id,user_id" }).select().single();
       if (error) return jsonError("Impossible de modifier l'autorisation du membre.", 403);
       return NextResponse.json({ member: data });
     }
 
     if (action === "member-remove") {
-      if (typeof body.userId !== "string") return jsonError("userId requis.");
+      if (typeof body.userId !== "string" || !UUID_RE.test(body.userId)) return jsonError("Identifiant utilisateur invalide.");
       const { error } = await supabase.from("world_members").delete().eq("world_id", worldId).eq("user_id", body.userId);
       if (error) return jsonError("Impossible de retirer ce membre.", 403);
       return NextResponse.json({ ok: true });
     }
 
     if (action === "rule-update") {
-      if (typeof body.ruleId !== "string" || typeof body.title !== "string" || typeof body.description !== "string") return jsonError("Données de règle invalides.");
+      if (typeof body.ruleId !== "string" || !UUID_RE.test(body.ruleId) || typeof body.title !== "string" || typeof body.description !== "string") return jsonError("Données de règle invalides.");
+      const title = body.title.trim().slice(0, 160);
+      const description = body.description.trim().slice(0, 1200);
+      if (!title || !description) return jsonError("Le titre et la description de la règle sont requis.");
       const { data: existing } = await supabase.from("world_rules").select("immutable").eq("id", body.ruleId).eq("world_id", worldId).single();
       if (!existing) return jsonError("Règle introuvable.", 404);
       if (existing.immutable) return jsonError("Cette loi fondamentale est immuable.", 403);
-      const { data, error } = await supabase.from("world_rules").update({ title: body.title.trim().slice(0, 160), description: body.description.trim().slice(0, 1200) }).eq("id", body.ruleId).eq("world_id", worldId).select().single();
+      const { data, error } = await supabase.from("world_rules").update({ title, description }).eq("id", body.ruleId).eq("world_id", worldId).select().single();
       if (error) return jsonError("Impossible de modifier cette règle.", 403);
       return NextResponse.json({ rule: data });
     }
 
     if (action === "proposal") {
-      const type = typeof body.type === "string" ? body.type : "unknown";
-      const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
-      const coherenceResult = body.coherenceResult && typeof body.coherenceResult === "object" ? body.coherenceResult : {};
+      const type = typeof body.type === "string" && PROPOSAL_TYPES.has(body.type) ? body.type : null;
+      if (!type) return jsonError("Type de proposition invalide.");
+      const payload = body.payload && typeof body.payload === "object" && !Array.isArray(body.payload) ? body.payload : {};
+      const coherenceResult = body.coherenceResult && typeof body.coherenceResult === "object" && !Array.isArray(body.coherenceResult) ? body.coherenceResult : {};
       const coherenceStatus = body.coherenceStatus === "rejected" ? "rejected" : "accepted";
       const { data, error } = await supabase.from("creation_proposals").insert({ world_id: worldId, author_id: user.id, type, payload, coherence_status: coherenceStatus, coherence_result: coherenceResult }).select().single();
       if (error) return jsonError("Impossible d'enregistrer la proposition.", 403);
