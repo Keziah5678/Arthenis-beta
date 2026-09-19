@@ -67,7 +67,16 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;bo
 .topActions select{width:auto;padding:8px 10px;margin:0}
 .topActions button{padding:8px 14px}
 
-.heroScreen{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:760px;margin:0 auto;padding:12vh 24px;gap:14px}
+.heroScreen{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;max-width:760px;margin:0 auto;padding:12vh 24px;gap:14px;overflow:hidden}
+.heroScreen>*{position:relative;z-index:2}
+.heroBackdrop{position:absolute;z-index:1;top:0;left:0;right:0;height:48vh;min-height:320px;max-height:520px;overflow:hidden;pointer-events:none}
+.heroBackdrop .heroMoon{position:absolute;left:50%;top:2%;width:170px;height:170px;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle at 40% 35%,#f3ecff,#c9a6ff 45%,#7b3fd6 75%,transparent 78%);box-shadow:0 0 100px 34px rgba(165,104,255,.32);opacity:.85}
+.heroBackdrop .heroBeam{position:absolute;left:50%;top:10%;bottom:0;width:120px;transform:translateX(-50%);background:linear-gradient(180deg,rgba(230,211,255,.35),rgba(165,104,255,.08) 60%,transparent);filter:blur(6px)}
+.heroBackdrop .heroPeaks{position:absolute;left:-5%;right:-5%;bottom:14%;height:34%;background:#150c26;clip-path:polygon(0 100%,0 55%,8% 40%,16% 62%,26% 22%,36% 58%,46% 34%,55% 66%,64% 18%,74% 52%,84% 30%,93% 60%,100% 42%,100% 100%)}
+.heroBackdrop .heroPeaksFar{position:absolute;left:-5%;right:-5%;bottom:22%;height:26%;background:#1f1338;opacity:.8;clip-path:polygon(0 100%,0 68%,12% 46%,22% 70%,34% 40%,48% 72%,60% 38%,72% 66%,84% 44%,100% 70%,100% 100%)}
+.heroBackdrop .heroCastle{position:absolute;left:50%;bottom:30%;width:120px;height:70px;transform:translateX(-50%);background:#0d0715;clip-path:polygon(4% 100%,4% 45%,14% 45%,14% 25%,24% 25%,24% 45%,38% 45%,38% 8%,50% 8%,50% 45%,62% 45%,62% 22%,72% 22%,72% 45%,86% 45%,86% 55%,96% 55%,96% 100%)}
+.heroBackdrop .heroFade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,var(--bg) 96%)}
+.heroBackdrop .heroStar{position:absolute;width:3px;height:3px;background:#fff;border-radius:50%;box-shadow:0 0 6px 1px rgba(255,255,255,.8)}
 .heroScreen h1{font-size:clamp(34px,6vw,60px);line-height:1.12;margin:0}
 .heroScreen h1 em{font-style:italic;background:linear-gradient(135deg,#d1a6ff,#8256f0);-webkit-background-clip:text;background-clip:text;color:transparent}
 .heroScreen>p{color:var(--muted);max-width:520px;line-height:1.7;font-size:15px}
@@ -144,7 +153,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;bo
 .memberRow span{text-transform:uppercase;font-size:10px;color:var(--muted);min-width:90px}
 .memberRow b{flex:1;font-weight:600;font-size:11px;word-break:break-all}
 
-.toastNotice{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:50;background:#171024;border:1px solid #8657c7;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 15px 50px rgba(0,0,0,.55);font-size:13px;max-width:90vw}
+.toastNotice{position:fixed;bottom:calc(78px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:50;background:#171024;border:1px solid #8657c7;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 15px 50px rgba(0,0,0,.55);font-size:13px;max-width:min(560px,90vw)}
 .toastNotice button{border:0;background:transparent;padding:0;font-size:16px}
 .authNotice{color:#e0b8ff;font-size:12px;line-height:1.5;margin:8px 0}
 .accountBar{display:flex;align-items:center;gap:10px}
@@ -157,7 +166,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;bo
 .creatureBody{position:absolute;left:38px;bottom:14px;width:52px;height:44px;border-radius:50% 50% 40% 40%;background:linear-gradient(135deg,#8a4dff,#3a1a5e);box-shadow:0 0 18px rgba(165,104,255,.55)}
 .creatureEye{position:absolute;left:58px;bottom:42px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
 
-@media(max-width:700px){.topbar{padding:12px 16px}.worldConsole{padding:14px 16px 22px}.commandPanel{margin:24px auto;padding:20px}.toastNotice{top:auto;bottom:calc(78px + env(safe-area-inset-bottom,0px));left:16px;right:84px;transform:none;max-width:none}}
+@media(max-width:700px){.topbar{padding:12px 16px}.worldConsole{padding:14px 16px 22px}.commandPanel{margin:24px auto;padding:20px}.toastNotice{left:16px;right:84px;transform:none;max-width:none}}
 
 /* ================================================================
    MOBILE APP SHELL v2 — bottom tab bar, segmented sub-nav, cover
@@ -229,7 +238,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;bo
 .mapPin{position:absolute;transform:translate(-50%,-100%);display:flex;align-items:center;gap:6px;background:#120d19f0;border:1px solid #4a3562;border-radius:999px;padding:7px 12px 7px 9px;font-size:11px;font-weight:700;color:#f1e8ff;box-shadow:0 8px 22px rgba(0,0,0,.5);white-space:nowrap;z-index:5}
 .mapPin b{font-size:13px;font-weight:400}
 .mapCanvasFallback{position:absolute;inset:0;background:radial-gradient(circle at 12% 15%,#7fb8e0 0%,#3a6d94 20%,transparent 42%),radial-gradient(circle at 30% 55%,#2f6b45 0%,#1c4530 24%,transparent 48%),radial-gradient(circle at 78% 68%,#d9a959 0%,#a97a3a 22%,transparent 46%),radial-gradient(circle at 85% 20%,#3f9bc9 0%,#1f5478 24%,transparent 44%),linear-gradient(160deg,#16324a,#1b3a2e 45%,#4a3a24 75%,#123a52)}
-.compassBadge{position:absolute;right:16px;bottom:16px;z-index:8;width:52px;height:52px;border-radius:50%;background:rgba(10,7,17,.75);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;backdrop-filter:blur(8px)}
+.compassBadge{position:absolute;left:16px;bottom:16px;z-index:8;width:52px;height:52px;border-radius:50%;background:rgba(10,7,17,.75);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;backdrop-filter:blur(8px)}
 
 .accountCard{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:12px;flex-wrap:wrap}
 .accountCard span{font-size:13px;color:var(--muted)}
@@ -244,7 +253,8 @@ img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
 .searchBar input{border:0;background:transparent;padding:0;margin:0;flex:1}
 .communityList{display:flex;flex-direction:column;gap:14px}
 .communityCard{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
-.communityCover{height:120px;position:relative;background:linear-gradient(135deg,#241238,#120a20)}
+.communityCover{height:120px;position:relative;background:linear-gradient(135deg,#241238,#120a20);overflow:hidden}
+.communityCover .worldTile{height:100%;width:100%}
 .communityCover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .communityBody{padding:14px 16px}
 .communityBody h3{margin:2px 0;cursor:pointer}
