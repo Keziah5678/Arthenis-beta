@@ -38,7 +38,7 @@ export const AERION_WORLD: DemoWorld = {
   magic_enabled: true,
   fiction_enabled: true,
   fictional_creatures_enabled: true,
-  visual_bible: { theme: "Fantasy", magic: true, fiction: true, fictionalCreatures: true },
+  visual_bible: { theme: "Fantasy", magic: true, fiction: true, fictionalCreatures: true, coverImageUrl: "/demo/aerion-cover.jpg", mapImageUrl: "/demo/aerion-map.jpg" },
   world_memory: { day: 14, map_version: 1 }
 };
 
@@ -48,7 +48,7 @@ export const AERION_ITEMS: DemoItem[] = [
   { id: "demo-r3", kind: "Région", name: "Cité-Dune d'Or", description: "Un désert méridional traversé par des routes caravanières reliant les royaumes du sud.", day: 1, x: 55, y: 85 },
   { id: "demo-c1", kind: "Civilisation", name: "Royaume de Valcendre", description: "Le plus grand royaume humain d'Aerion, gouverné par une monarchie héréditaire et une petite caste de mages autorisés.", day: 1, x: 44, y: 32 },
   { id: "demo-v1", kind: "Village", name: "Port-Maréah", description: "Un village de pêcheurs sur la côte est, connu pour son marché aux poissons et ses contrebandiers.", day: 3, x: 88, y: 18 },
-  { id: "demo-p1", kind: "Personnage", name: "Elarion Duskblade", description: "Chevalier-mage de Valcendre, l'un des rares autorisés à pratiquer la magie de combat. Envoyé enquêter sur les Pics de Givre.", day: 5, x: 10, y: 34 },
+  { id: "demo-p1", kind: "Personnage", name: "Elarion Duskblade", description: "Chevalier-mage de Valcendre, l'un des rares autorisés à pratiquer la magie de combat. Envoyé enquêter sur les Pics de Givre.", day: 5, x: 10, y: 34, imageUrl: "/demo/portrait-elarion.jpg" },
   { id: "demo-p2", kind: "Personnage", name: "Maître Bram", description: "Forgeron de Port-Maréah ayant récemment découvert un minerai inconnu dans les grottes côtières.", day: 8, x: 92, y: 44 },
   { id: "demo-cr1", kind: "Créature", name: "Sylvurus", description: "Un dragon ancien endormi depuis des siècles sous les Pics de Givre, récemment réveillé par des tremblements de terre inexpliqués.", day: 12, x: 8, y: 60 },
   { id: "demo-i1", kind: "Influence", name: "Minerai de Bram", description: "Un métal bleuté aux propriétés inconnues, découvert par Maître Bram — sa nature exacte reste à déterminer.", day: 8, x: 70, y: 62 }
