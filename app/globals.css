@@ -382,3 +382,8 @@ img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
    magnified blur. */
 .groundLayer{position:absolute;inset:0;pointer-events:none;transition:opacity .2s}
 .groundTile{position:absolute;background-size:cover;background-repeat:no-repeat;-webkit-mask-image:radial-gradient(ellipse at center,#000 34%,rgba(0,0,0,.65) 56%,transparent 76%);mask-image:radial-gradient(ellipse at center,#000 34%,rgba(0,0,0,.65) 56%,transparent 76%)}
+
+/* Bundled art is a stand-in until the world generates its own. Saying so stops
+   it from being read as the finished illustration. */
+.visualWrap{position:relative;display:block}
+.provisional{position:absolute;left:8px;bottom:8px;font-size:9px;letter-spacing:.08em;font-weight:700;color:#e4d9f5;background:rgba(9,6,15,.78);border:1px solid #4a3562;border-radius:999px;padding:4px 9px;pointer-events:none}

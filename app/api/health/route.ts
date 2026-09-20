@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { OPENAI_IMAGE_MODEL, OPENAI_TEXT_MODEL } from "../../../lib/ai/config";
 import { describeUpstreamFailure } from "../../../lib/ai/errors";
+import { IMAGE_MODEL_CANDIDATES } from "../../../lib/ai/models";
 
 // Which build is actually being served. Vercel pins every hash-suffixed URL to
 // one deployment, so without this there is no way to tell from the outside
@@ -25,16 +26,25 @@ async function probeOpenAI() {
     return { ok: false, detail: "Aucune clé OpenAI n'est configurée sur ce déploiement." };
   }
   const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), 15_000);
+  const timer = setTimeout(() => abort.abort(), 20_000);
   try {
-    const response = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(OPENAI_IMAGE_MODEL)}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: abort.signal
-    });
-    if (response.ok) {
-      return { ok: true, detail: `Clé valide et modèle « ${OPENAI_IMAGE_MODEL} » accessible.` };
+    // Report on the whole fallback chain, since a key that cannot reach the
+    // preferred engine can still generate through an older one.
+    let lastStatus = 0, lastBody = "";
+    for (const model of IMAGE_MODEL_CANDIDATES) {
+      const response = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(model)}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: abort.signal
+      });
+      if (response.ok) {
+        const note = model === OPENAI_IMAGE_MODEL ? "" : " (modèle de repli)";
+        return { ok: true, model, detail: `Clé valide, génération possible via « ${model} »${note}. Il faut aussi du crédit sur le compte API pour que les images aboutissent.` };
+      }
+      lastStatus = response.status;
+      lastBody = await response.text();
+      if (lastStatus === 401) break;
     }
-    return { ok: false, detail: describeUpstreamFailure(response.status, await response.text()) };
+    return { ok: false, detail: describeUpstreamFailure(lastStatus, lastBody) };
   } catch (error) {
     const aborted = error instanceof Error && error.name === "AbortError";
     return { ok: false, detail: aborted ? "OpenAI n'a pas répondu dans le délai imparti." : "Impossible de joindre OpenAI depuis le serveur." };

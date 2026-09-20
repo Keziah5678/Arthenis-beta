@@ -3,6 +3,7 @@ import type { WorldContext } from "../../../lib/arthenis";
 import { OPENAI_IMAGE_MODEL } from "../../../lib/ai/config";
 import { buildImagePrompt, type ImageEntity, type ImageOptions } from "../../../lib/ai/images";
 import { describeUpstreamFailure } from "../../../lib/ai/errors";
+import { IMAGE_MODEL_CANDIDATES, imageRequestBody, isModelAccessFailure } from "../../../lib/ai/models";
 
 const IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || "1024x1024";
 const REQUEST_TIMEOUT_MS = 90_000;
@@ -67,23 +68,37 @@ export async function POST(request: Request) {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: OPENAI_IMAGE_MODEL, prompt, size: IMAGE_SIZE, n: 1 }),
-      signal: abort.signal
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Arthenis image generation error:", response.status, errorText);
-      return NextResponse.json({ error: "Image generation failed.", detail: describeUpstreamFailure(response.status, errorText) }, { status: 502 });
+    // Walk the candidate engines. A model-access refusal means try the next one;
+    // anything else (bad key, no credit, content policy) applies to all of them,
+    // so stop and report it rather than burning time on certain failures.
+    let data: any = null;
+    let usedModel = "";
+    let lastStatus = 0;
+    let lastBody = "";
+    for (const model of IMAGE_MODEL_CANDIDATES) {
+      const response = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(imageRequestBody(model, prompt, IMAGE_SIZE)),
+        signal: abort.signal
+      });
+      if (response.ok) { data = await response.json(); usedModel = model; break; }
+      lastStatus = response.status;
+      lastBody = await response.text();
+      console.error("Arthenis image generation error:", model, lastStatus, lastBody);
+      if (!isModelAccessFailure(lastStatus, lastBody)) break;
     }
 
-    const data = await response.json();
+    if (!data) {
+      return NextResponse.json(
+        { error: "Image generation failed.", detail: describeUpstreamFailure(lastStatus, lastBody) },
+        { status: 502 }
+      );
+    }
+
     const image = data.data?.[0];
-    if (image?.b64_json) return NextResponse.json({ imageData: `data:image/png;base64,${image.b64_json}`, spec, category });
-    if (image?.url) return NextResponse.json({ imageUrl: image.url, spec, category });
+    if (image?.b64_json) return NextResponse.json({ imageData: `data:image/png;base64,${image.b64_json}`, spec, category, model: usedModel });
+    if (image?.url) return NextResponse.json({ imageUrl: image.url, spec, category, model: usedModel });
     return NextResponse.json({ error: "Image generation returned no image.", detail: "OpenAI a répondu sans image." }, { status: 502 });
   } catch (error) {
     const aborted = error instanceof Error && error.name === "AbortError";
