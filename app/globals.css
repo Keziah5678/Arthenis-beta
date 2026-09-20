@@ -337,9 +337,9 @@ img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
 .mapCanvasFallback{position:absolute;inset:0;background:radial-gradient(circle at 35% 30%,#2b4a36,#16321f 45%,#0d1f16 80%)}
 
 /* Territory interiors: settlements and woodland that grow in as you descend. */
-.territoryDetail{position:absolute;inset:0;pointer-events:none;transition:opacity .2s}
-.speck{position:absolute;transform-origin:50% 100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
-.speck svg{display:block}
+
+
+
 
 .mapPin{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;background:#120d19f2;border:1px solid #4a3562;border-radius:12px;color:#f1e8ff;box-shadow:0 10px 26px rgba(0,0,0,.55);transition:opacity .18s,border-color .15s;max-width:210px}
 .mapPin:hover{border-color:#a568ff}
@@ -375,15 +375,36 @@ img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
 
 /* The scenery is SVG now, so tiles fill their box and stay sharp at any size. */
 .worldTile{display:block;width:100%;background:#1a1226}
-.mapTerrain{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+
 
 /* Painted ground. The terrain is real artwork tiled at a size that halves with
    each zoom step, so descending shows finer painted ground rather than a
    magnified blur. */
-.groundLayer{position:absolute;inset:0;pointer-events:none;transition:opacity .2s}
-.groundTile{position:absolute;background-size:cover;background-repeat:no-repeat;-webkit-mask-image:radial-gradient(ellipse at center,#000 34%,rgba(0,0,0,.65) 56%,transparent 76%);mask-image:radial-gradient(ellipse at center,#000 34%,rgba(0,0,0,.65) 56%,transparent 76%)}
+
+
 
 /* Bundled art is a stand-in until the world generates its own. Saying so stops
    it from being read as the finished illustration. */
-.visualWrap{position:relative;display:block}
-.provisional{position:absolute;left:8px;bottom:8px;font-size:9px;letter-spacing:.08em;font-weight:700;color:#e4d9f5;background:rgba(9,6,15,.78);border:1px solid #4a3562;border-radius:999px;padding:4px 9px;pointer-events:none}
+
+
+
+/* Procedural terrain. Drawn in screen space, so it is redrawn rather than
+   transformed and stays sharp at every level. Natural colours: the Arthenis
+   purple belongs to the interface, never to the ground. */
+.terrainCanvas{position:absolute;left:0;top:0;display:block;pointer-events:none}
+.markerLayer{pointer-events:none}
+.markerLayer>*{pointer-events:auto}
+
+.mapHints{position:absolute;z-index:8;left:12px;bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 68px);pointer-events:none}
+.mapHints>span{font-size:10px;letter-spacing:.05em;background:rgba(9,6,15,.84);border:1px solid var(--line);border-radius:999px;padding:5px 10px}
+.mapHere{color:#f1e8ff;font-weight:800}
+.mapLevelHint{color:var(--muted)}
+.mapMore{color:#c6a8ff}
+
+/* Where you are in the five levels, at a glance. */
+.levelRail{position:absolute;z-index:8;right:14px;bottom:14px;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.levelRail i{width:5px;height:14px;border-radius:3px;background:#3a2b52;transition:background .2s}
+.levelRail i.on{background:#b57bff;box-shadow:0 0 8px #a568ff88}
+
+.mapToolbar button:disabled{opacity:.4;cursor:not-allowed}
+.mapJumpRow .muted{font-size:11px;line-height:1.5;margin:0}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { WorldContext } from "../../../lib/arthenis";
 import { OPENAI_IMAGE_MODEL } from "../../../lib/ai/config";
 import { buildImagePrompt, type ImageEntity, type ImageOptions } from "../../../lib/ai/images";
+import type { WorldVisualIdentity } from "../../../lib/world/identity";
 import { describeUpstreamFailure } from "../../../lib/ai/errors";
 import { IMAGE_MODEL_CANDIDATES, imageRequestBody, isModelAccessFailure } from "../../../lib/ai/models";
 
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
   const context = body.context as WorldContext;
   const entity = body.entity as ImageEntity;
   const options = (body.options ?? {}) as ImageOptions;
+  const identity = (body.identity ?? undefined) as WorldVisualIdentity | undefined;
   const references = Array.isArray(body.references) ? (body.references as unknown[]).filter((r): r is string => typeof r === "string") : undefined;
 
   if (!context?.name || !entity?.name || !entity?.type) {
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const { prompt, spec, category } = buildImagePrompt(context, entity, options, references);
+  const { prompt, spec, category } = buildImagePrompt(context, entity, options, references, identity);
 
   if (!apiKey) {
     return NextResponse.json({ error: "OPENAI_API_KEY is not configured.", detail: "Aucune clé OpenAI n'est configurée sur ce déploiement." }, { status: 503 });

@@ -1,4 +1,5 @@
 import type { WorldContext } from "../arthenis";
+import type { WorldVisualIdentity } from "../world/identity";
 
 // Image engine, kept separate from the route that calls it so the provider can
 // be swapped without touching the API surface or the UI.
@@ -23,7 +24,15 @@ export type ImageOptions = {
   extra?: string;
 };
 
-export type ImageEntity = { type: string; name: string; description: string };
+export type ImageEntity = {
+  type: string;
+  name: string;
+  description: string;
+  /** Everything the creator actually filled in: age, role, culture, era, magic level… */
+  attributes?: Record<string, string | number | boolean | null | undefined>;
+  /** Stable per-entity id. Two entities never share one, so they never share a look. */
+  seed?: string;
+};
 
 /** Entity kinds as used by the app, mapped to a gallery category. */
 export function categoryForKind(kind: string): ImageCategory {
@@ -89,8 +98,16 @@ function detailText(detail: ImageDetail | undefined): string {
  * the prompt itself — this is what keeps a "no magic, no fictional creatures"
  * world from silently getting dragons.
  */
-export function coherenceConstraints(context: WorldContext): string[] {
+export function coherenceConstraints(context: WorldContext, identity?: WorldVisualIdentity): string[] {
   const out: string[] = [];
+  // When the world has a derived identity, its forbidden list is authoritative:
+  // it already accounts for era, technology level, magic and creature rules.
+  if (identity) {
+    for (const f of identity.forbidden) out.push(`Aucun de ces éléments : ${f}.`);
+    out.push("Aucun texte, lettrage, légende, logo ou filigrane dans l'image.");
+    out.push("Aucun élément d'interface, cadre ou bordure ajoutée.");
+    return out;
+  }
   const theme = (context.theme || "").toLowerCase();
   const preModern = /médiéval|medieval|antique|préhist|prehist|tribal|âge de bronze|age de bronze/.test(theme);
 
@@ -137,18 +154,53 @@ function continuityLines(context: WorldContext, references: string[] | undefined
  * follow prose far better than a serialised object, so the world context is
  * flattened into sentences rather than JSON.
  */
-export function buildImagePrompt(context: WorldContext, entity: ImageEntity, options: ImageOptions = {}, references?: string[]) {
+/** The creator's own fields, turned into the sentence an image model can use. */
+function attributeLine(entity: ImageEntity): string {
+  const a = entity.attributes ?? {};
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(a)) {
+    if (v === null || v === undefined || v === "" || v === false) continue;
+    parts.push(`${k} : ${v}`);
+  }
+  return parts.length ? `Caractéristiques établies — ${parts.join(" ; ")}.` : "";
+}
+
+/** The world's persistent look, restated so every image belongs to the same place. */
+function identityLines(identity?: WorldVisualIdentity): string[] {
+  if (!identity) return [];
+  return [
+    `Époque : ${identity.era}. Climat dominant : ${identity.climate}. Niveau technologique sur dix : ${identity.techLevel}.`,
+    `Architecture : ${identity.architecture}. Matériaux : ${identity.materials}.`,
+    `Végétation : ${identity.vegetation}. Relief : ${identity.relief}.`,
+    `Atmosphère : ${identity.atmosphere}. Lumière : ${identity.light}.`,
+    `Style de rendu : ${identity.artStyle}.`
+  ];
+}
+
+export function buildImagePrompt(
+  context: WorldContext,
+  entity: ImageEntity,
+  options: ImageOptions = {},
+  references?: string[],
+  identity?: WorldVisualIdentity
+) {
   const category = options.category ?? categoryForKind(entity.type);
   const rules = (context.rules ?? []).filter(r => r?.title).slice(0, 8).map(r => `${r.title} : ${r.description}`);
-  const constraints = coherenceConstraints(context);
+  const constraints = coherenceConstraints(context, identity);
   const continuity = continuityLines(context, references);
+  const attrs = attributeLine(entity);
+  const world = identityLines(identity);
 
   const sections = [
     `${framingText(options.framing, category)} — ${entity.type} « ${entity.name} » du monde ${context.name}.`,
     entity.description ? `Sujet : ${entity.description}` : "",
+    attrs,
     `Univers : monde de type ${context.theme}. Magie ${context.magicEnabled ? "autorisée et présente" : "absente"}, fiction ${context.fictionEnabled ? "autorisée" : "interdite"}, créatures fantastiques ${context.fictionalCreaturesEnabled ? "autorisées" : "interdites"}.`,
+    world.length ? `Identité visuelle du monde — ${world.join(" ")}` : "",
     rules.length ? `Lois du monde à respecter — ${rules.join(" ; ")}.` : "",
     continuity.length ? `Continuité visuelle — ${continuity.join(" ")}` : "",
+    // Named so two entities of the same kind never converge on one face or one skyline.
+    `Ce sujet est unique et distinct de tout autre ${entity.type.toLowerCase()} de ce monde ; identifiant de composition ${entity.seed || entity.name}.`,
     options.extra?.trim() ? `Précisions du créateur : ${options.extra.trim()}` : "",
     `Style : ${styleText(options.style)}, ${detailText(options.detail)}.`,
     `Contraintes strictes — ${constraints.join(" ")}`
@@ -173,6 +225,7 @@ export function buildImagePrompt(context: WorldContext, entity: ImageEntity, opt
       },
       options,
       references: references ?? [],
+      identity: identity ? { version: identity.version, seed: identity.seed, era: identity.era, climate: identity.climate, techLevel: identity.techLevel } : null,
       constraints
     }
   };

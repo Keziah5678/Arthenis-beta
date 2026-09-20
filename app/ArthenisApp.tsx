@@ -5,7 +5,8 @@ import { supabase, supabaseConfigured, getSupabaseConfigurationError } from "../
 import { AERION_WORLD, AERION_ITEMS, AERION_EVENTS, AERION_RULES, AERION_DAY } from "../lib/demo/aerion";
 import { DEMO_COMMUNITY_WORLDS } from "../lib/demo/community";
 import { IMAGE_CATEGORIES, IMAGE_STYLES, IMAGE_FRAMINGS, IMAGE_DETAILS, categoryForKind, type ImageCategory, type ImageOptions, type ImageEntity } from "../lib/ai/images";
-import { artFor, variantFilter } from "./art";
+import { placeholderFor } from "./placeholder";
+import { resolveIdentity, IDENTITY_VERSION, deriveVisualIdentity, type WorldVisualIdentity as WorldIdentity } from "../lib/world/identity";
 import WorldMap from "./WorldMap";
 
 type Kind = "Région" | "Civilisation" | "Village" | "Personnage" | "Créature" | "Influence";
@@ -26,28 +27,41 @@ const magicLabel=(v:number)=>v<=0?"Aucune":v<34?"Faible":v<67?"Moyenne":v<90?"Fo
 // The declared theme decides the artwork; the description only breaks ties.
 // Reading them as one string let a science-fiction world whose blurb mentions
 // a collapse be painted as a volcano.
-const themeVisual=(theme:string,description:string="")=>{
- const th=(theme||"").toLowerCase(), d=(description||"").toLowerCase();
- const pick=(t:string)=>{
-  if(/science|futur|cyber|techno|spatial/.test(t))return "city";
-  if(/post-apo|effondr|ruine|apocalyp/.test(t))return "volcano";
-  if(/volcan|infernal|feu/.test(t))return "volcano";
-  if(/glace|arctique|nord|neige|givre/.test(t))return "ice";
-  if(/désert|desert|sable|dune/.test(t))return "desert";
-  if(/océan|ocean|marine|île|ile|maritime/.test(t))return "ocean";
-  if(/urbain|cité|cite|ville|moderne/.test(t))return "city";
-  if(/forêt|foret|nature|sylv|jungle/.test(t))return "forest";
-  if(/médiéval|medieval|fantasy|fantastique|royaume/.test(t))return "mountain";
-  return "";
- };
- return pick(th)||pick(d)||"forest";
-};
 const translateAuthError=(msg:string)=>{const m=msg.toLowerCase();if(m.includes("already registered")||m.includes("already exists"))return "Un compte existe déjà avec cet e-mail. Essaie de te connecter.";if(m.includes("invalid login credentials"))return "E-mail ou mot de passe incorrect.";if(m.includes("email not confirmed"))return "Ton e-mail n'est pas encore confirmé. Vérifie ta boîte de réception (et tes spams).";if(m.includes("rate limit")||m.includes("too many requests")||m.includes("email rate limit"))return "Trop de tentatives — réessaie dans quelques minutes.";if(m.includes("password should be at least")||m.includes("password is too short"))return "Le mot de passe doit contenir au moins 6 caractères.";if(m.includes("user not found"))return "Aucun compte trouvé avec cet e-mail.";return msg;};
-const visual=(i:Item)=>{const t=(i.name+" "+i.description).toLowerCase();if(i.kind==="Personnage")return "character";if(i.kind==="Créature")return "creature";if(i.kind==="Civilisation")return /futur|cyber|techno|spatial|gratte-ciel|tour-cit|néon|neon/.test(t)?"city":"village";if(i.kind==="Village")return /port|côte|cote|mer|rivage|pêche|peche|île|ile/.test(t)?"ocean":"village";if(i.kind==="Influence")return "relic";if(/glace|neige|arct|froid|gel/.test(t))return "ice";if(/forêt|foret|jungle|bois/.test(t))return "forest";if(/désert|desert|sable|dune/.test(t))return "desert";if(/volcan|lave|magma|feu/.test(t))return "volcano";if(/océan|ocean|mer|île|ile|rivage/.test(t))return "ocean";return "mountain"};
-function Tile({kind,seed}:{kind:string;seed?:string}){return <img className="worldTile" src={artFor(kind)} alt="" loading="lazy" style={seed?{filter:variantFilter(seed)}:undefined}/>}
-function EntityVisual({item}:{item:Item}){
- if(item.imageUrl)return <img className="worldTile" src={item.imageUrl} alt=""/>;
- return <span className="visualWrap"><Tile kind={visual(item)} seed={item.id+item.name}/><span className="provisional">Illustration provisoire</span></span>;
+
+/**
+ * One visual identity per world, cached outside React so the reference is stable.
+ *
+ * Every placeholder, every terrain draw and every generation prompt reads it. A
+ * new object on each render would redraw the whole map continuously, so it is
+ * keyed by the world and the text of its laws and only rebuilt when those change.
+ */
+const IDENTITY_CACHE=new Map<string,WorldIdentity>();
+const NO_WORLD:WorldIdentity=deriveVisualIdentity({id:"arthenis",name:"Arthenis",theme:"Fantasy",description:"",magic_enabled:true,fiction_enabled:true,fictional_creatures_enabled:true});
+function identityFor(world:World|null,rules:Rule[]):WorldIdentity{
+ if(!world)return NO_WORLD;
+ const laws=rules.map(r=>`${r.title}|${r.description}`).join("~");
+ const key=`${world.id}|${world.theme}|${world.magic_enabled}|${world.fiction_enabled}|${world.fictional_creatures_enabled}|${laws}`;
+ const hit=IDENTITY_CACHE.get(key);
+ if(hit)return hit;
+ const built=resolveIdentity(world,rules.map(r=>({title:r.title,description:r.description})));
+ if(IDENTITY_CACHE.size>40)IDENTITY_CACHE.clear();
+ IDENTITY_CACHE.set(key,built);
+ return built;
+}
+
+/** A visual identity for a world we only know from its listing. */
+const cardIdentity=(w:{id:string;name:string;theme:string;description:string})=>deriveVisualIdentity({
+ id:w.id,name:w.name,theme:w.theme,description:w.description,
+ magic_enabled:true,fiction_enabled:true,fictional_creatures_enabled:true
+});
+function WorldCover({w}:{w:{id:string;name:string;theme:string;description:string;cover?:string|null}}){
+ const src=w.cover||placeholderFor(cardIdentity(w),{id:w.id,kind:"Région",name:w.name,description:w.description});
+ return <img src={src} alt="" loading="lazy" decoding="async"/>;
+}
+function EntityVisual({item,identity}:{item:Item;identity:WorldIdentity}){
+ const src=item.imageUrl||placeholderFor(identity,{id:item.id,kind:item.kind,name:item.name,description:item.description});
+ return <img className="worldTile" src={src} alt="" loading="lazy" decoding="async"/>;
 }
 function Auth({mode,email,password,busy,notice,setEmail,setPassword,auth,reset,toggle,close}:{mode:"signin"|"signup";email:string;password:string;busy:boolean;notice:string;setEmail:(v:string)=>void;setPassword:(v:string)=>void;auth:()=>void;reset:()=>void;toggle:()=>void;close:()=>void}){return <div className="commandOverlay"><section className="commandModal"><div className="panelHeader"><div><p className="panelTag">ARTHENIS ACCOUNT</p><h2>{mode==="signin"?"Connexion":"Créer un compte"}</h2></div><button onClick={close}>×</button></div><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-mail" autoComplete="email"/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mot de passe (6 caractères minimum)" autoComplete={mode==="signin"?"current-password":"new-password"}/><button className="primary" disabled={busy} onClick={auth}>{busy?"Patiente…":mode==="signin"?"Se connecter":"Créer mon compte"}</button>{mode==="signin"&&<button disabled={busy} onClick={reset}>Mot de passe oublié ?</button>}{notice&&<p className="authNotice">{notice}</p>}<button disabled={busy} onClick={toggle}>{mode==="signin"?"Créer un compte":"J'ai déjà un compte"}</button></section></div>}
 
@@ -176,14 +190,17 @@ export default function ArthenisApp(){
  async function createItem(){if(!world){setNotice("Crée d'abord ton monde.");return}const n=name.trim(),text=description.trim()||"Élément créé par le créateur.";if(!n){setNotice("Donne un nom.");return}setBusy(true);try{if(demoMode){const context={name:world.name,theme:world.theme,fictionEnabled:world.fiction_enabled,fictionalCreaturesEnabled:world.fictional_creatures_enabled,magicEnabled:world.magic_enabled,rules:rules.map(r=>({title:r.title,description:r.description,immutable:r.immutable})),memory:{day},visualBible:world.visual_bible};const cres=await fetch("/api/coherence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,proposal:{type:kind,name:n,description:text}})});const co=await cres.json().catch(()=>null);if(!cres.ok)throw new Error(co?.error||"Cohérence indisponible.");if(co?.decision!=="accept")throw new Error("✦ Idée refusée : "+(co?.reason||"elle contredit les lois du monde."));const demoId=`demo-${Date.now()}`;const newItem={id:demoId,kind,name:n,description:text,day,x:10+Math.round(Math.random()*80),y:10+Math.round(Math.random()*80),imageUrl:kind==="Personnage"?composerPortrait:null};setItems(cur=>[...cur,newItem]);resetComposer();setTab(kind==="Personnage"||kind==="Créature"?"habitants":kind==="Région"?"map":"lieux");setNotice("✦ Création acceptée. Génération de l'illustration…");
    if(!newItem.imageUrl){
     try{
-     const ires=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,entity:{type:kind,name:n,description:text}})});
+     const ires=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,identity,entity:{type:kind,name:n,description:text,seed:demoId,attributes:{"époque":identity.era,"climat":identity.climate,"rôle":kind==="Personnage"?(role||undefined):undefined}}})});
      const ip=await ires.json().catch(()=>null);
      const isrc=ip?.imageData||ip?.imageUrl;
      if(ires.ok&&typeof isrc==="string"){setItems(cur=>cur.map(i=>i.id===demoId?{...i,imageUrl:isrc}:i));setNotice(`✦ ${n} est créé, avec son illustration (mode démo, non sauvegardé).`);}
      else setNotice(`✦ ${n} est créé, mais son illustration a échoué : ${ip?.detail||"génération refusée."}`);
     }catch{setNotice(`✦ ${n} est créé, mais la génération d'image n'a pas répondu.`);}
    }else setNotice(`✦ ${n} est créé (mode démo, non sauvegardé).`);
-   return;}const {data:rr,error:re}=await supabase.from("world_rules").select("category,title,description,immutable").eq("world_id",world.id);if(re)throw new Error("Impossible de charger les lois.");const context={name:world.name,theme:world.theme,fictionEnabled:world.fiction_enabled,fictionalCreaturesEnabled:world.fictional_creatures_enabled,magicEnabled:world.magic_enabled,rules:(rr||[]).map(r=>({title:r.title,description:r.description,immutable:r.immutable})),memory:{day},visualBible:world.visual_bible};const cres=await fetch("/api/coherence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,proposal:{type:kind,name:n,description:text}})});const co=await cres.json();if(!cres.ok)throw new Error(co?.error||"Cohérence indisponible.");if(co?.decision!=="accept")throw new Error("✦ Idée refusée : "+(co?.reason||"elle contredit les lois du monde."));let table:string;let row:any={world_id:world.id,name:n};if(kind==="Région"){table="regions";row={...row,description:text,x:12+((Date.now()*37)%72),y:14+((Date.now()*23)%68),biome:"custom",generation_status:"ready"};}else if(kind==="Civilisation"){table="civilizations";row={...row,description:text};}else if(kind==="Village"){table="civilizations";row={...row,description:text,culture:"Village"};}else if(kind==="Personnage"){table="characters";row={...row,biography:text,role:role||null,profession:profession||null,magic_level:Math.max(0,Math.min(100,Number(magicLevel)||0)),ai_can_evolve:aiEvolve};}else if(kind==="Créature"){table="creatures";row={...row,classification:"Créature",fictional:world.fictional_creatures_enabled,description:text};}else{table="timeline_events";row={world_id:world.id,title:n,description:text,world_day:day,consequences:[]};delete row.name;}const {data,error}=await supabase.from(table).insert(row).select().single();if(error)throw new Error(error.message);const token=(await supabase.auth.getSession()).data.session?.access_token||"";const pr=await fetch("/api/world-engine",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({worldId:world.id,action:"proposal",type:kind,payload:{name:n,description:text},coherenceStatus:"accepted",coherenceResult:co})});if(!pr.ok)throw new Error("La création a réussi mais son historique n'a pas pu être enregistré.");setNotice("✦ Création acceptée. Génération visuelle en cours…");const visualError=await generateAsset(table,data,context,kind,n,text,kind==="Personnage"?composerPortrait:null);resetComposer();await selectWorld(world);setTab(kind==="Personnage"||kind==="Créature"?"habitants":kind==="Région"?"map":"lieux");setNotice(visualError?`✦ ${n} est créé, mais son illustration a échoué : ${visualError}`:`✦ ${n} est créé, avec son illustration.`);}catch(e){setNotice(e instanceof Error?e.message:"Impossible de créer cet élément.");}finally{setBusy(false);}}
+   return;}const {data:rr,error:re}=await supabase.from("world_rules").select("category,title,description,immutable").eq("world_id",world.id);if(re)throw new Error("Impossible de charger les lois.");const context={name:world.name,theme:world.theme,fictionEnabled:world.fiction_enabled,fictionalCreaturesEnabled:world.fictional_creatures_enabled,magicEnabled:world.magic_enabled,rules:(rr||[]).map(r=>({title:r.title,description:r.description,immutable:r.immutable})),memory:{day},visualBible:world.visual_bible};const cres=await fetch("/api/coherence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,proposal:{type:kind,name:n,description:text}})});const co=await cres.json();if(!cres.ok)throw new Error(co?.error||"Cohérence indisponible.");if(co?.decision!=="accept")throw new Error("✦ Idée refusée : "+(co?.reason||"elle contredit les lois du monde."));let table:string;let row:any={world_id:world.id,name:n};if(kind==="Région"){table="regions";row={...row,description:text,x:12+((Date.now()*37)%72),y:14+((Date.now()*23)%68),biome:"custom",generation_status:"ready"};}else if(kind==="Civilisation"){table="civilizations";row={...row,description:text};}else if(kind==="Village"){table="civilizations";row={...row,description:text,culture:"Village"};}else if(kind==="Personnage"){table="characters";row={...row,biography:text,role:role||null,profession:profession||null,magic_level:Math.max(0,Math.min(100,Number(magicLevel)||0)),ai_can_evolve:aiEvolve};}else if(kind==="Créature"){table="creatures";row={...row,classification:"Créature",fictional:world.fictional_creatures_enabled,description:text};}else{table="timeline_events";row={world_id:world.id,title:n,description:text,world_day:day,consequences:[]};delete row.name;}const {data,error}=await supabase.from(table).insert(row).select().single();if(error)throw new Error(error.message);const token=(await supabase.auth.getSession()).data.session?.access_token||"";const pr=await fetch("/api/world-engine",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({worldId:world.id,action:"proposal",type:kind,payload:{name:n,description:text},coherenceStatus:"accepted",coherenceResult:co})});if(!pr.ok)throw new Error("La création a réussi mais son historique n'a pas pu être enregistré.");setNotice("✦ Création acceptée. Génération visuelle en cours…");const attrs:Record<string,unknown>=kind==="Personnage"
+     ?{"rôle":role||undefined,"profession":profession||undefined,"niveau de magie":magicLabel(Number(magicLevel)||0),"époque":identity.era,"culture":world.name,"jour du monde":day}
+     :{"époque":identity.era,"climat":identity.climate,"jour du monde":day};
+   const visualError=await generateAsset(table,data,context,kind,n,text,kind==="Personnage"?composerPortrait:null,attrs);resetComposer();await selectWorld(world);setTab(kind==="Personnage"||kind==="Créature"?"habitants":kind==="Région"?"map":"lieux");setNotice(visualError?`✦ ${n} est créé, mais son illustration a échoué : ${visualError}`:`✦ ${n} est créé, avec son illustration.`);}catch(e){setNotice(e instanceof Error?e.message:"Impossible de créer cet élément.");}finally{setBusy(false);}}
  /**
   * Generates and stores the illustration for a freshly created entity.
   *
@@ -198,16 +215,17 @@ export default function ArthenisApp(){
   * first screen is placeholder art does not look like it was built for you.
   */
  async function generateWorldVisuals(w:World){
+  const worldIdentity=deriveVisualIdentity(w,[]);
   const context={name:w.name,theme:w.theme,fictionEnabled:w.fiction_enabled,fictionalCreaturesEnabled:w.fictional_creatures_enabled,magicEnabled:w.magic_enabled,rules:[],memory:{day:1},visualBible:w.visual_bible};
   const jobs:{key:string;entity:ImageEntity}[]=[
    {key:"coverImageUrl",entity:{type:"Couverture du monde",name:w.name,description:w.description||`Paysage emblématique du monde ${w.name}, thème ${w.theme}.`}},
    {key:"mapImageUrl",entity:{type:"Carte du monde",name:w.name,description:`Carte illustrée vue du dessus du continent de ${w.name}.`}}
   ];
-  const bible:Record<string,unknown>={...(w.visual_bible||{})};
+  const bible:Record<string,unknown>={...(w.visual_bible||{}),identity:worldIdentity,identityVersion:IDENTITY_VERSION};
   let failure:string|null=null;
   for(const job of jobs){
    try{
-    const res=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,entity:job.entity})});
+    const res=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,identity:worldIdentity,entity:{...job.entity,seed:`${w.id}-${job.key}`}})});
     const p=await res.json().catch(()=>null);
     const src=p?.imageData||p?.imageUrl;
     if(!res.ok||typeof src!=="string"){failure=failure||p?.detail||"génération refusée.";continue;}
@@ -222,17 +240,15 @@ export default function ArthenisApp(){
     }
    }catch{failure=failure||"génération interrompue.";}
   }
-  if(bible.coverImageUrl||bible.mapImageUrl){
-   await supabase.from("worlds").update({visual_bible:bible}).eq("id",w.id);
-   setWorld(cur=>cur&&cur.id===w.id?{...cur,visual_bible:bible}:cur);
-  }
+  await supabase.from("worlds").update({visual_bible:bible}).eq("id",w.id);
+  setWorld(cur=>cur&&cur.id===w.id?{...cur,visual_bible:bible}:cur);
   return failure;
  }
- async function generateAsset(table:string,data:any,context:any,type:string,n:string,text:string,preGenerated?:string|null):Promise<string|null>{
+ async function generateAsset(table:string,data:any,context:any,type:string,n:string,text:string,preGenerated?:string|null,attrs?:Record<string,unknown>):Promise<string|null>{
   try{
    let src:string|undefined|null=preGenerated;
    if(!src){
-    const res=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,entity:{type,name:n,description:text},references:[`Le monde : ${(world?.description||"").slice(0,160)}`]})});
+    const res=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context,identity,entity:{type,name:n,description:text,seed:data.id,attributes:attrs},references:[`Le monde : ${(world?.description||"").slice(0,160)}`]})});
     const p=await res.json().catch(()=>null);
     src=p?.imageData||p?.imageUrl;
     if(!res.ok||typeof src!=="string")return p?.detail||"génération refusée par le service d'images.";
@@ -278,7 +294,7 @@ export default function ArthenisApp(){
   if(!world||!studio||studioBusy)return;
   setStudioBusy(true);setStudioError(null);
   try{
-   const res=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context:studioContext(),entity:studio.entity,options:studioOptions,references:studioReferences(studio)})});
+   const res=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({context:studioContext(),identity,entity:{...studio.entity,seed:studio.item?.id||world.id,attributes:studio.item?{"jour d\u2019apparition":studio.item.day,"\u00e9poque":identity.era}:{"\u00e9poque":identity.era,"climat":identity.climate}},options:studioOptions,references:studioReferences(studio)})});
    const p=await res.json().catch(()=>null);
    const src=p?.imageData||p?.imageUrl;
    if(res.ok&&typeof src==="string")setStudioResult(src);else setStudioError(p?.detail||"raison inconnue.");
@@ -332,6 +348,7 @@ export default function ArthenisApp(){
  async function toggleWorldSetting(key:"allow_member_creation"|"manual_review"){if(!world)return;const current=Boolean((world.world_memory as any)?.[key]??(key==="allow_member_creation"));const newMemory={...(world.world_memory||{}),[key]:!current};setWorld(cur=>cur?{...cur,world_memory:newMemory}:cur);if(!demoMode){try{await supabase.from("worlds").update({world_memory:newMemory}).eq("id",world.id);}catch{}}}
  async function saveMember(){if(!world||!memberId.trim())return;setBusy(true);try{const token=(await supabase.auth.getSession()).data.session?.access_token||"";const res=await fetch("/api/world-engine",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({worldId:world.id,action:"member-upsert",userId:memberId.trim(),role:memberRole,permissions:{can_create:memberRole!=="viewer",can_edit_rules:memberRole==="admin",can_advance:["admin","creator"].includes(memberRole)}})});const p=await res.json();if(!res.ok)throw new Error(p?.error||"Gestion du membre refusée.");setMemberId("");await loadMembers(world.id);setNotice("✦ Membre ajouté/mis à jour.");}catch(e){setNotice(e instanceof Error?e.message:"Impossible de modifier le membre.");}finally{setBusy(false);}}
  async function removeMember(userId:string){if(!world)return;setBusy(true);try{const token=(await supabase.auth.getSession()).data.session?.access_token||"";const res=await fetch("/api/world-engine",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({worldId:world.id,action:"member-remove",userId})});const p=await res.json();if(!res.ok)throw new Error(p?.error||"Suppression refusée.");await loadMembers(world.id);setNotice("✦ Membre retiré.");}catch(e){setNotice(e instanceof Error?e.message:"Impossible de retirer le membre.");}finally{setBusy(false);}}
+ const identity=identityFor(world,rules);
  const canManage=!!session&&!!world&&(world.owner_id===session.user.id||members.some(m=>m.user_id===session.user.id&&m.role==="admin"));
  const canEdit=demoMode||(!!session&&!!world&&(world.owner_id===session.user.id||members.some(m=>m.user_id===session.user.id&&["admin","creator","contributor"].includes(m.role))));
  const canAdvance=demoMode||(!!session&&!!world&&(world.owner_id===session.user.id||members.some(m=>m.user_id===session.user.id&&["admin","creator"].includes(m.role))));
@@ -359,11 +376,11 @@ export default function ArthenisApp(){
     <div className="descCard"><div className="descHeader"><p className="panelTag">DESCRIPTION</p>{canEdit&&!editingDescription&&<button onClick={()=>{setDescDraft(world.description||"");setEditingDescription(true)}}>Modifier</button>}</div>{editingDescription?<><textarea value={descDraft} onChange={e=>setDescDraft(e.target.value)} rows={4}/><div className="row"><button onClick={()=>setEditingDescription(false)}>Annuler</button><button className="primary" onClick={saveDescription}>Enregistrer</button></div></>:<p>{world.description||"Aucune description pour l'instant."}</p>}</div>
    </div>}
 
-   {tab==="map"&&<WorldMap items={items} mapImageUrl={mapImageUrl} worldName={world.name} canEdit={canEdit} onSelect={i=>setSelected(i)} onGenerateMap={()=>openStudio({scope:"map",entity:{type:"Carte du monde",name:world.name,description:`Carte illustrée du continent de ${world.name}.`}})}/>}
+   {tab==="map"&&<WorldMap items={items} identity={identity} selectedId={selected?.id||null} mapImageUrl={mapImageUrl} worldName={world.name} canEdit={canEdit} onSelect={i=>setSelected(i)} onGenerateMap={()=>openStudio({scope:"map",entity:{type:"Carte du monde",name:world.name,description:`Carte illustrée du continent de ${world.name}.`}})}/>}
 
-   {tab==="habitants"&&<div className="contentGrid">{habitantItems.map(i=><article className="entityCard" key={i.id} onClick={()=>setSelected(i)}><EntityVisual item={i}/><p className="panelTag">{i.kind}</p><h3>{i.name}</h3><p>{i.description}</p></article>)}{habitantItems.length===0&&<p className="muted">Aucun habitant pour le moment. Crée un personnage ou une créature.</p>}</div>}
+   {tab==="habitants"&&<div className="contentGrid">{habitantItems.map(i=><article className="entityCard" key={i.id} onClick={()=>setSelected(i)}><EntityVisual item={i} identity={identity}/><p className="panelTag">{i.kind}</p><h3>{i.name}</h3><p>{i.description}</p></article>)}{habitantItems.length===0&&<p className="muted">Aucun habitant pour le moment. Crée un personnage ou une créature.</p>}</div>}
 
-   {tab==="lieux"&&<div className="contentGrid">{lieuItems.map(i=><article className="entityCard" key={i.id} onClick={()=>setSelected(i)}><EntityVisual item={i}/><p className="panelTag">{i.kind}</p><h3>{i.name}</h3><p>{i.description}</p></article>)}{lieuItems.length===0&&<p className="muted">Aucun lieu pour le moment.</p>}</div>}
+   {tab==="lieux"&&<div className="contentGrid">{lieuItems.map(i=><article className="entityCard" key={i.id} onClick={()=>setSelected(i)}><EntityVisual item={i} identity={identity}/><p className="panelTag">{i.kind}</p><h3>{i.name}</h3><p>{i.description}</p></article>)}{lieuItems.length===0&&<p className="muted">Aucun lieu pour le moment.</p>}</div>}
 
    {tab==="galerie"&&<div className="galleryPane">
     <p className="muted">Toutes les images générées pour {world.name}, classées par catégorie.{demoMode?" En mode démo, elles ne sont pas sauvegardées.":""}</p>
@@ -393,7 +410,7 @@ export default function ArthenisApp(){
     {exploreSubTab==="decouvrir"&&<div className="communityList">
      {communityLoading&&<p className="muted">Chargement…</p>}
      {!communityLoading&&communityCards.filter(c=>(c.name+" "+c.description).toLowerCase().includes(exploreQuery.toLowerCase())).map(c=><article className="communityCard" key={c.id}>
-      <div className="communityCover">{c.coverImageUrl?<img src={c.coverImageUrl} alt=""/>:<Tile kind={themeVisual(c.theme,c.description)}/>}</div>
+      <div className="communityCover"><WorldCover w={{id:c.id,name:c.name,theme:c.theme,description:c.description,cover:c.coverImageUrl}}/></div>
       <div className="communityBody"><h3 onClick={()=>openCommunityWorld(c)}>{c.name}</h3><div className="communityMeta">@{c.creatorHandle} · {c.theme}</div><p>{c.description}</p><div className="communityActions"><button className={`likeButton${c.liked?" liked":""}`} onClick={()=>toggleLike(c)}>{c.liked?"♥":"♡"} {c.likeCount}</button><button className={`followButton${c.following?" following":""}`} onClick={()=>toggleFollow(c)}>{c.following?"Suivi":"Suivre"}</button><button className="openWorldButton" onClick={()=>openCommunityWorld(c)}>Ouvrir</button></div></div>
      </article>)}
      {!communityLoading&&communityCards.length===0&&<p className="muted">{demoMode?"Aucun monde de démonstration.":!session?"Connecte-toi pour découvrir des mondes publics.":"Aucun monde public pour le moment. Sois le premier à en publier un !"}</p>}
@@ -401,14 +418,14 @@ export default function ArthenisApp(){
     {exploreSubTab==="mesmondes"&&<div className="communityList">
      {demoMode&&<p className="muted">Crée un compte pour sauvegarder et retrouver tes propres mondes ici.</p>}
      {!demoMode&&worlds.filter(w=>(w.name+" "+(w.description||"")).toLowerCase().includes(exploreQuery.toLowerCase())).map(w=><article className="communityCard" key={w.id}>
-      <div className="communityCover">{(w.visual_bible as any)?.coverImageUrl?<img src={(w.visual_bible as any).coverImageUrl} alt=""/>:<Tile kind={themeVisual(w.theme,w.description)}/>}</div>
+      <div className="communityCover"><WorldCover w={{id:w.id,name:w.name,theme:w.theme,description:w.description,cover:(w.visual_bible as any)?.coverImageUrl}}/></div>
       <div className="communityBody"><h3 onClick={()=>selectWorld(w)}>{w.name}</h3><div className="communityMeta">{w.theme}{w.is_public?" · Public":" · Privé"}</div><p>{w.description}</p><div className="communityActions"><button className="openWorldButton" onClick={()=>selectWorld(w)}>Ouvrir</button></div></div>
      </article>)}
      {!demoMode&&worlds.length===0&&<p className="muted">Tu n&apos;as pas encore créé de monde.</p>}
     </div>}
     {exploreSubTab==="suivis"&&<div className="communityList">
      {followedCards.filter(c=>(c.name+" "+c.description).toLowerCase().includes(exploreQuery.toLowerCase())).map(c=><article className="communityCard" key={c.id}>
-      <div className="communityCover">{c.coverImageUrl?<img src={c.coverImageUrl} alt=""/>:<Tile kind={themeVisual(c.theme,c.description)}/>}</div>
+      <div className="communityCover"><WorldCover w={{id:c.id,name:c.name,theme:c.theme,description:c.description,cover:c.coverImageUrl}}/></div>
       <div className="communityBody"><h3 onClick={()=>openCommunityWorld(c)}>{c.name}</h3><div className="communityMeta">@{c.creatorHandle} · {c.theme}</div><p>{c.description}</p><div className="communityActions"><button className={`likeButton${c.liked?" liked":""}`} onClick={()=>toggleLike(c)}>{c.liked?"♥":"♡"} {c.likeCount}</button><button className="followButton following" onClick={()=>toggleFollow(c)}>Suivi</button><button className="openWorldButton" onClick={()=>openCommunityWorld(c)}>Ouvrir</button></div></div>
      </article>)}
      {followedCards.length===0&&<p className="muted">Tu ne suis aucun monde pour le moment. Suis-en un depuis Découvrir.</p>}
@@ -445,7 +462,7 @@ export default function ArthenisApp(){
    </div>}
   </section>}
   {screen==="world"&&world&&!assistantOpen&&<button className="assistantFab" title="Assistant Arthenis" onClick={()=>setAssistantOpen(true)}>✦</button>}
-  {selected&&<aside className="inspector"><button onClick={()=>setSelected(null)}>×</button><p className="panelTag">{selected.kind}</p><h3>{selected.name}</h3><EntityVisual item={selected}/><p>{selected.description}</p><small>Jour {selected.day}</small>{canEdit&&<button className="primary wide" style={{marginTop:12}} onClick={()=>openStudio({scope:"entity",entity:{type:selected.kind,name:selected.name,description:selected.description},item:selected})}>✦ Générer une image</button>}</aside>}
+  {selected&&<aside className="inspector"><button onClick={()=>setSelected(null)}>×</button><p className="panelTag">{selected.kind}</p><h3>{selected.name}</h3><EntityVisual item={selected} identity={identity}/><p>{selected.description}</p><small>Jour {selected.day}</small>{canEdit&&<button className="primary wide" style={{marginTop:12}} onClick={()=>openStudio({scope:"entity",entity:{type:selected.kind,name:selected.name,description:selected.description},item:selected})}>✦ Générer une image</button>}</aside>}
   {screen==="world"&&world&&<nav className="bottomNav">
    <button className={(["overview","habitants","lieux"] as Tab[]).includes(tab)?"active":""} onClick={()=>setTab("overview")}><b>⌂</b>Accueil</button>
    <button className={tab==="create"?"active":""} onClick={()=>setTab("create")}><b>✦</b>Créer</button>
