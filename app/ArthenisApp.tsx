@@ -38,6 +38,7 @@ export default function ArthenisApp(){
  const [studio,setStudio]=useState<StudioTarget|null>(null),[studioOptions,setStudioOptions]=useState<ImageOptions>({}),[studioBusy,setStudioBusy]=useState(false),[studioResult,setStudioResult]=useState<string|null>(null),[studioError,setStudioError]=useState<string|null>(null),[studioSaving,setStudioSaving]=useState(false),[gallery,setGallery]=useState<GalleryItem[]>([]);
  const [assistantOpen,setAssistantOpen]=useState(false),[chatMessages,setChatMessages]=useState<{role:"user"|"assistant";text:string}[]>([]),[chatInput,setChatInput]=useState(""),[chatBusy,setChatBusy]=useState(false);
  const [demoMode,setDemoMode]=useState(false);
+ const [diag,setDiag]=useState<{build?:any;models?:any;features?:any;openai?:{ok:boolean;detail:string}}|null>(null),[diagBusy,setDiagBusy]=useState(false);
  function startDemo(){
   setDemoMode(true);
   setWorld(AERION_WORLD);
@@ -161,6 +162,15 @@ export default function ArthenisApp(){
   const related=target.item?items.filter(i=>i.kind===target.item!.kind&&i.id!==target.item!.id):items.filter(i=>i.kind==="Civilisation"||i.kind==="Région");
   for(const i of related.slice(0,3))refs.push(`${i.kind} ${i.name} : ${i.description.slice(0,90)}`);
   return refs;
+ }
+ async function runDiagnostic(){
+  setDiagBusy(true);
+  try{
+   const r=await fetch("/api/health?deep=1");
+   setDiag(await r.json());
+  }catch{
+   setDiag({openai:{ok:false,detail:"Impossible de contacter le serveur Arthenis."}});
+  }finally{setDiagBusy(false);}
  }
  function openStudio(target:StudioTarget){setStudio(target);setStudioResult(null);setStudioError(null);setStudioSaving(false);setStudioOptions({category:categoryForKind(target.entity.type)});}
  async function runStudio(){
@@ -320,6 +330,17 @@ export default function ArthenisApp(){
     <div className="collabPanel">
      <div className="settingsBlock"><h3>Ajouter un collaborateur</h3>{canManage?<><input value={memberId} onChange={e=>setMemberId(e.target.value)} placeholder="UUID de l'utilisateur"/><select value={memberRole} onChange={e=>setMemberRole(e.target.value)}><option value="viewer">Lecteur</option><option value="contributor">Contributeur</option><option value="creator">Créateur</option><option value="admin">Administrateur</option></select><button className="primary" disabled={busy} onClick={saveMember}>Ajouter / modifier</button></>:<p className="muted">Seul le propriétaire ou un administrateur peut gérer les accès.</p>}</div>
      <div className="membersList"><div className="memberRow"><span>Propriétaire</span><b>{world.owner_id}</b></div>{members.map(m=><div className="memberRow" key={m.id}><span>{m.role}</span><b>{m.user_id}</b>{canManage&&<button onClick={()=>removeMember(m.user_id)}>Retirer</button>}</div>)}</div>
+    </div>
+    <p className="panelTag">DIAGNOSTIC</p>
+    <div className="settingsBlock diagBlock">
+     <p className="muted">Vérifie que la génération d&apos;images est bien configurée sur ce déploiement. Ce test ne consomme aucun crédit.</p>
+     <button className="primary" disabled={diagBusy} onClick={runDiagnostic}>{diagBusy?"Vérification…":"Vérifier la configuration IA"}</button>
+     {diag&&<div className="diagResult">
+      <div className={`diagRow${diag.openai?(diag.openai.ok?" ok":" ko"):""}`}><span>{diag.openai?(diag.openai.ok?"✓":"✕"):"•"}</span><p>{diag.openai?.detail||"Aucune information."}</p></div>
+      <div className="diagRow"><span>•</span><p>Base de données {diag.features?.supabase?"connectée":"non configurée"}.</p></div>
+      {diag.models&&<div className="diagRow"><span>•</span><p>Modèle d&apos;images : {diag.models.image}.</p></div>}
+      {diag.build&&<div className="diagRow"><span>•</span><p>Version déployée : {diag.build.commit} ({diag.build.environment}).</p></div>}
+     </div>}
     </div>
    </div>}
   </section>}

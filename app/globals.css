@@ -304,3 +304,15 @@ img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
 .assistantInputRow button{border-radius:50%;width:44px;height:44px;padding:0;flex:0 0 auto}
 
 @media(max-width:900px){.statRow{grid-template-columns:repeat(2,1fr)}}
+
+/* Diagnostic panel — lets a non-technical user see why AI generation fails
+   without opening devtools or a JSON endpoint. */
+.diagBlock>.muted{margin:0 0 10px;font-size:12px;line-height:1.5}
+.diagResult{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.diagRow{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.diagRow>span{flex:0 0 16px;text-align:center;opacity:.7}
+.diagRow>p{margin:0}
+.diagRow.ok>span{color:#6fcf97;opacity:1}
+.diagRow.ok>p{color:var(--text)}
+.diagRow.ko>span{color:#e77b7b;opacity:1}
+.diagRow.ko>p{color:#f0b9b9}
