@@ -268,6 +268,23 @@ img.worldTile{width:100%;object-fit:cover;display:block;background:#1a1226}
 .followButton.following{border-color:var(--purple);color:#e7d8ff;background:#241640}
 .openWorldButton{margin-left:auto}
 
+.studioModal{display:flex;flex-direction:column;gap:10px}
+.studioPreview{position:relative;min-height:190px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(135deg,#1a0f2b,#0c0714);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.studioPreview img{width:100%;height:100%;max-height:340px;object-fit:contain;display:block}
+.studioPlaceholder{padding:22px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
+.studioLoading{display:flex;flex-direction:column;align-items:center;gap:12px;color:#d9cce8;font-size:13px}
+.studioSpinner{width:30px;height:30px;border-radius:50%;border:2px solid #3b2451;border-top-color:var(--purple);animation:studioSpin .8s linear infinite}
+@keyframes studioSpin{to{transform:rotate(360deg)}}
+.studioError{margin:0;color:#ffb2d6;font-size:12px;line-height:1.5;background:#2a1420;border:1px solid #7c3a58;border-radius:10px;padding:10px 12px}
+.studioFields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.studioFields select{margin:0}
+.galleryPane{display:flex;flex-direction:column;gap:14px}
+.galleryPane section{display:flex;flex-direction:column;gap:8px}
+.galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.galleryItem{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.galleryItem img{width:100%;height:120px;object-fit:cover;display:block}
+.galleryItem figcaption{padding:8px 10px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 .assistantFab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:55;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#c9a6ff,#7b3fd6 55%,#3a1a66);border:1px solid #b98be9;box-shadow:0 10px 30px rgba(155,94,255,.55),inset 0 0 0 1px rgba(255,255,255,.08);font-size:22px;display:flex;align-items:center;justify-content:center;color:#fff;padding:0}
 .assistantOverlay{position:fixed;inset:0;z-index:70;background:#05030a;display:flex;flex-direction:column}
 .assistantHeader{display:flex;flex-direction:column;align-items:center;gap:8px;padding:calc(26px + env(safe-area-inset-top,0px)) 20px 18px;border-bottom:1px solid var(--line);position:relative;flex:0 0 auto}
